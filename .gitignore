@@ -1,0 +1,40 @@
+# Visual Studio
+.vs/
+*.user
+*.rsuser
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Build output
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+x86/
+x64/
+ARM/
+ARM64/
+
+# Test results
+TestResults/
+*.trx
+*.coverage
+*.coveragexml
+
+# NuGet
+packages/
+*.nupkg
+*.snupkg
+project.lock.json
+
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
+*.cache
+
+# OS files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
