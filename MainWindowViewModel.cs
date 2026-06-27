@@ -1,6 +1,8 @@
 using System.Collections.ObjectModel;
+using System.Windows;
 using ConvenientNote.Application.Workspaces;
 using ConvenientNote.Domain.Workspaces;
+using MaterialDesignThemes.Wpf;
 using Prism.Commands;
 using Prism.Mvvm;
 
@@ -15,12 +17,14 @@ namespace ConvenientNote
         private string _quickAddTitle = string.Empty;
         private string _title = "Convenient Note";
         private string _workspaceName = "默认工作区";
+        private bool _isNavigationExpanded;
 
         public MainWindowViewModel(WorkspaceApplicationService workspaceApplicationService)
         {
             _workspaceApplicationService = workspaceApplicationService;
 
             AddTodoCommand = new DelegateCommand(async () => await AddTodoAsync());
+            ToggleNavigationCommand = new DelegateCommand(ToggleNavigation);
             PreviousWeekCommand = new DelegateCommand(() => ShiftSelectedDate(-7));
             NextWeekCommand = new DelegateCommand(() => ShiftSelectedDate(7));
             SelectTodayCommand = new DelegateCommand(() => SelectDate(DateTime.Today));
@@ -32,13 +36,13 @@ namespace ConvenientNote
                 }
             });
 
-            NavigationItems.Add(new NavigationItemViewModel("Day Todo", "今天要处理的待办"));
-            NavigationItems.Add(new NavigationItemViewModel("最近待办", "最近创建和更新"));
-            NavigationItems.Add(new NavigationItemViewModel("日程概览", "按日期查看"));
-            NavigationItems.Add(new NavigationItemViewModel("待办箱", "未完成事项"));
-            NavigationItems.Add(new NavigationItemViewModel("数据复盘", "完成情况"));
-            NavigationItems.Add(new NavigationItemViewModel("已达成", "已完成事项"));
-            NavigationItems.Add(new NavigationItemViewModel("回收站", "删除的项目"));
+            NavigationItems.Add(new NavigationItemViewModel("Day Todo", "今天要处理的待办", PackIconKind.CalendarToday));
+            NavigationItems.Add(new NavigationItemViewModel("最近待办", "最近创建和更新", PackIconKind.History));
+            NavigationItems.Add(new NavigationItemViewModel("日程概览", "按日期查看", PackIconKind.CalendarMonth));
+            NavigationItems.Add(new NavigationItemViewModel("待办箱", "未完成事项", PackIconKind.Inbox));
+            NavigationItems.Add(new NavigationItemViewModel("数据复盘", "完成情况", PackIconKind.ChartLine));
+            NavigationItems.Add(new NavigationItemViewModel("已达成", "已完成事项", PackIconKind.CheckCircleOutline));
+            NavigationItems.Add(new NavigationItemViewModel("回收站", "删除的项目", PackIconKind.DeleteOutline));
 
             RefreshDateStrip();
             _ = LoadDefaultWorkspaceAsync();
@@ -68,6 +72,35 @@ namespace ConvenientNote
             set => SetProperty(ref _quickAddTitle, value);
         }
 
+        public bool IsNavigationExpanded
+        {
+            get => _isNavigationExpanded;
+            set
+            {
+                if (SetProperty(ref _isNavigationExpanded, value))
+                {
+                    RaisePropertyChanged(nameof(NavigationColumnWidth));
+                    RaisePropertyChanged(nameof(NavigationExpandedVisibility));
+                    RaisePropertyChanged(nameof(NavigationCollapsedVisibility));
+                    RaisePropertyChanged(nameof(NavigationToggleText));
+                }
+            }
+        }
+
+        public GridLength NavigationColumnWidth => IsNavigationExpanded
+            ? new GridLength(236)
+            : new GridLength(72);
+
+        public Visibility NavigationExpandedVisibility => IsNavigationExpanded
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+
+        public Visibility NavigationCollapsedVisibility => IsNavigationExpanded
+            ? Visibility.Collapsed
+            : Visibility.Visible;
+
+        public string NavigationToggleText => IsNavigationExpanded ? "‹" : "›";
+
         public ObservableCollection<NavigationItemViewModel> NavigationItems { get; } = new();
 
         public ObservableCollection<DateTabViewModel> DateTabs { get; } = new();
@@ -75,6 +108,8 @@ namespace ConvenientNote
         public ObservableCollection<CanvasTodoViewModel> TodoItems { get; } = new();
 
         public DelegateCommand AddTodoCommand { get; }
+
+        public DelegateCommand ToggleNavigationCommand { get; }
 
         public DelegateCommand PreviousWeekCommand { get; }
 
@@ -112,6 +147,11 @@ namespace ConvenientNote
             }
 
             await _workspaceApplicationService.MoveNoteAsync(workspaceId, todo.Id, todo.X, todo.Y);
+        }
+
+        private void ToggleNavigation()
+        {
+            IsNavigationExpanded = !IsNavigationExpanded;
         }
 
         private async Task LoadDefaultWorkspaceAsync()
