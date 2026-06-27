@@ -1,3 +1,8 @@
 <Solution>
+  <Folder Name="/src/">
+    <Project Path="src/ConvenientNote.Application/ConvenientNote.Application.csproj" />
+    <Project Path="src/ConvenientNote.Domain/ConvenientNote.Domain.csproj" />
+    <Project Path="src/ConvenientNote.Infrastructure/ConvenientNote.Infrastructure.csproj" />
+  </Folder>
   <Project Path="ConvenientNote.csproj" />
 </Solution>

@@ -1,0 +1,49 @@
+using ConvenientNote.Infrastructure.Persistence.Entities;
+using Microsoft.EntityFrameworkCore;
+
+namespace ConvenientNote.Infrastructure.Persistence;
+
+public sealed class ConvenientNoteDbContext : DbContext
+{
+    public ConvenientNoteDbContext(DbContextOptions<ConvenientNoteDbContext> options)
+        : base(options)
+    {
+    }
+
+    public DbSet<WorkspaceEntity> Workspaces => Set<WorkspaceEntity>();
+
+    public DbSet<NoteEntity> Notes => Set<NoteEntity>();
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<WorkspaceEntity>(workspace =>
+        {
+            workspace.ToTable("Workspaces");
+            workspace.HasKey(current => current.Id);
+            workspace.Property(current => current.Name).HasMaxLength(80).IsRequired();
+            workspace.Property(current => current.CreatedAt).IsRequired();
+            workspace.Property(current => current.UpdatedAt).IsRequired();
+
+            workspace
+                .HasMany(current => current.Notes)
+                .WithOne(current => current.Workspace)
+                .HasForeignKey(current => current.WorkspaceId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<NoteEntity>(note =>
+        {
+            note.ToTable("Notes");
+            note.HasKey(current => current.Id);
+            note.Property(current => current.Title).HasMaxLength(80).IsRequired();
+            note.Property(current => current.Content).IsRequired();
+            note.Property(current => current.Color).HasMaxLength(32).IsRequired();
+            note.Property(current => current.CreatedAt).IsRequired();
+            note.Property(current => current.UpdatedAt).IsRequired();
+
+            note.HasIndex(current => current.WorkspaceId);
+            note.HasIndex(current => current.IsCompleted);
+            note.HasIndex(current => current.ZIndex);
+        });
+    }
+}
