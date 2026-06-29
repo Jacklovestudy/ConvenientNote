@@ -30,10 +30,12 @@ public sealed class SqliteWorkspaceRepository : IWorkspaceRepository
         var entities = await context.Workspaces
             .AsNoTracking()
             .Include(workspace => workspace.Notes)
-            .OrderBy(workspace => workspace.CreatedAt)
             .ToListAsync(cancellationToken);
 
-        return entities.Select(ToDomain).ToList();
+        return entities
+            .OrderBy(workspace => workspace.CreatedAt)
+            .Select(ToDomain)
+            .ToList();
     }
 
     public async Task<Workspace?> GetAsync(
@@ -71,11 +73,30 @@ public sealed class SqliteWorkspaceRepository : IWorkspaceRepository
             entity.Name = workspace.Name;
             entity.CreatedAt = workspace.CreatedAt;
             entity.UpdatedAt = workspace.UpdatedAt;
-            entity.Notes.Clear();
 
+            var noteIds = workspace.Notes
+                .Select(note => note.Id.Value)
+                .ToHashSet();
+            var removedNotes = entity.Notes
+                .Where(note => !noteIds.Contains(note.Id))
+                .ToList();
+
+            foreach (var removedNote in removedNotes)
+            {
+                context.Notes.Remove(removedNote);
+            }
+
+            var existingNotes = entity.Notes.ToDictionary(note => note.Id);
             foreach (var note in workspace.Notes)
             {
-                entity.Notes.Add(ToEntity(note, workspace.Id));
+                if (existingNotes.TryGetValue(note.Id.Value, out var noteEntity))
+                {
+                    UpdateEntity(noteEntity, note, workspace.Id);
+                }
+                else
+                {
+                    context.Notes.Add(ToEntity(note, workspace.Id));
+                }
             }
         }
 
@@ -208,21 +229,32 @@ public sealed class SqliteWorkspaceRepository : IWorkspaceRepository
 
     private static NoteEntity ToEntity(Note note, WorkspaceId workspaceId)
     {
-        return new NoteEntity
+        var entity = new NoteEntity
         {
             Id = note.Id.Value,
-            WorkspaceId = workspaceId.Value,
-            Title = note.Title,
-            Content = note.Content,
-            X = note.Position.X,
-            Y = note.Position.Y,
-            Width = note.Size.Width,
-            Height = note.Size.Height,
-            Color = note.Color,
-            ZIndex = note.ZIndex,
-            IsCompleted = note.IsCompleted,
-            CreatedAt = note.CreatedAt,
-            UpdatedAt = note.UpdatedAt
         };
+
+        UpdateEntity(entity, note, workspaceId);
+
+        return entity;
+    }
+
+    private static void UpdateEntity(
+        NoteEntity entity,
+        Note note,
+        WorkspaceId workspaceId)
+    {
+        entity.WorkspaceId = workspaceId.Value;
+        entity.Title = note.Title;
+        entity.Content = note.Content;
+        entity.X = note.Position.X;
+        entity.Y = note.Position.Y;
+        entity.Width = note.Size.Width;
+        entity.Height = note.Size.Height;
+        entity.Color = note.Color;
+        entity.ZIndex = note.ZIndex;
+        entity.IsCompleted = note.IsCompleted;
+        entity.CreatedAt = note.CreatedAt;
+        entity.UpdatedAt = note.UpdatedAt;
     }
 }

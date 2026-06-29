@@ -20,6 +20,7 @@ public sealed class ConvenientNoteDbContext : DbContext
         {
             workspace.ToTable("Workspaces");
             workspace.HasKey(current => current.Id);
+            workspace.Property(current => current.Id).ValueGeneratedNever();
             workspace.Property(current => current.Name).HasMaxLength(80).IsRequired();
             workspace.Property(current => current.CreatedAt).IsRequired();
             workspace.Property(current => current.UpdatedAt).IsRequired();
@@ -35,6 +36,7 @@ public sealed class ConvenientNoteDbContext : DbContext
         {
             note.ToTable("Notes");
             note.HasKey(current => current.Id);
+            note.Property(current => current.Id).ValueGeneratedNever();
             note.Property(current => current.Title).HasMaxLength(80).IsRequired();
             note.Property(current => current.Content).IsRequired();
             note.Property(current => current.Color).HasMaxLength(32).IsRequired();

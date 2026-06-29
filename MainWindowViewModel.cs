@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Windows;
 using ConvenientNote.Application.Workspaces;
 using ConvenientNote.Domain.Workspaces;
@@ -156,17 +157,26 @@ namespace ConvenientNote
 
         private async Task LoadDefaultWorkspaceAsync()
         {
-            var workspace = await _workspaceApplicationService.GetOrCreateDefaultWorkspaceAsync();
-
-            _currentWorkspaceId = workspace.Id;
-            WorkspaceName = workspace.Name;
-            Title = $"{workspace.Name} - Convenient Note";
-
-            TodoItems.Clear();
-            foreach (var note in workspace.Notes)
+            try
             {
-                TodoItems.Add(CreateTodoViewModel(note));
+                var workspace = await _workspaceApplicationService.GetOrCreateDefaultWorkspaceAsync();
+
+                _currentWorkspaceId = workspace.Id;
+                WorkspaceName = workspace.Name;
+                Title = $"{workspace.Name} - Convenient Note";
+
+                TodoItems.Clear();
+                foreach (var note in workspace.Notes)
+                {
+                    TodoItems.Add(CreateTodoViewModel(note));
+                }
             }
+            catch (Exception ex)
+            {
+
+                 Debug.WriteLine(ex);
+            }
+           
         }
 
         private async Task AddTodoAsync()
