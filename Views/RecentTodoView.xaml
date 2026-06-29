@@ -1,0 +1,8 @@
+<UserControl x:Class="ConvenientNote.Views.RecentTodoView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:prism="http://prismlibrary.com/"
+             xmlns:views="clr-namespace:ConvenientNote.Views"
+             prism:ViewModelLocator.AutoWireViewModel="True">
+    <views:TodoBoardControl />
+</UserControl>

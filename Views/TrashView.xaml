@@ -1,0 +1,49 @@
+<UserControl x:Class="ConvenientNote.Views.TrashView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:prism="http://prismlibrary.com/"
+             prism:ViewModelLocator.AutoWireViewModel="True">
+    <Grid Background="#F4F6F8">
+        <Border Background="#FFFFFF"
+                BorderBrush="#DFE4EA"
+                BorderThickness="0,0,0,1"
+                Height="86"
+                VerticalAlignment="Top"
+                Padding="96,14,20,14">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <StackPanel>
+                    <TextBlock Text="{Binding ViewTitle}"
+                               Foreground="#111827"
+                               FontSize="18"
+                               FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding ViewDescription}"
+                               Margin="0,4,0,0"
+                               Foreground="#667085"
+                               FontSize="12" />
+                </StackPanel>
+            </StackPanel>
+        </Border>
+        <StackPanel HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Width="420">
+            <materialDesign:PackIcon Kind="DeleteOutline"
+                                     Width="52"
+                                     Height="52"
+                                     HorizontalAlignment="Center"
+                                     Foreground="#3F51B5" />
+            <TextBlock Text="回收站待接入"
+                       Margin="0,16,0,0"
+                       HorizontalAlignment="Center"
+                       Foreground="#111827"
+                       FontSize="20"
+                       FontWeight="SemiBold" />
+            <TextBlock Text="{Binding ViewDescription}"
+                       Margin="0,8,0,0"
+                       TextAlignment="Center"
+                       TextWrapping="Wrap"
+                       Foreground="#667085"
+                       FontSize="13" />
+        </StackPanel>
+    </Grid>
+</UserControl>

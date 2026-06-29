@@ -1,6 +1,7 @@
 using ConvenientNote.Application.Abstractions;
 using ConvenientNote.Application.Workspaces;
 using ConvenientNote.Infrastructure.Persistence;
+using ConvenientNote.Views;
 using Prism.DryIoc;
 using Prism.Ioc;
 using System.Windows;
@@ -21,6 +22,13 @@ namespace ConvenientNote
         {
             containerRegistry.RegisterSingleton<IWorkspaceRepository, SqliteWorkspaceRepository>();
             containerRegistry.RegisterSingleton<WorkspaceApplicationService>();
+            containerRegistry.RegisterForNavigation<DayTodoView>();
+            containerRegistry.RegisterForNavigation<RecentTodoView>();
+            containerRegistry.RegisterForNavigation<ScheduleView>();
+            containerRegistry.RegisterForNavigation<InboxView>();
+            containerRegistry.RegisterForNavigation<ReviewView>();
+            containerRegistry.RegisterForNavigation<CompletedTodoView>();
+            containerRegistry.RegisterForNavigation<TrashView>();
         }
     }
 }
