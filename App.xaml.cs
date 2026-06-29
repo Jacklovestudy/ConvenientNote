@@ -1,6 +1,7 @@
 using ConvenientNote.Application.Abstractions;
 using ConvenientNote.Application.Workspaces;
 using ConvenientNote.Infrastructure.Persistence;
+using ConvenientNote.Services;
 using ConvenientNote.Views;
 using Prism.DryIoc;
 using Prism.Ioc;
@@ -22,6 +23,7 @@ namespace ConvenientNote
         {
             containerRegistry.RegisterSingleton<IWorkspaceRepository, SqliteWorkspaceRepository>();
             containerRegistry.RegisterSingleton<WorkspaceApplicationService>();
+            containerRegistry.RegisterSingleton<OpenMeteoWeatherService>();
             containerRegistry.RegisterForNavigation<DayTodoView>();
             containerRegistry.RegisterForNavigation<RecentTodoView>();
             containerRegistry.RegisterForNavigation<ScheduleView>();

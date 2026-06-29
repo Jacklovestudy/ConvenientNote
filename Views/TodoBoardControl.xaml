@@ -3,6 +3,102 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes">
     <UserControl.Resources>
+        <Style x:Key="BoardScrollBarPageButtonStyle" TargetType="{x:Type RepeatButton}">
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="IsTabStop" Value="False" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type RepeatButton}">
+                        <Border Background="Transparent" />
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="BoardScrollBarThumbStyle" TargetType="{x:Type Thumb}">
+            <Setter Property="Background" Value="#CBD5E1" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type Thumb}">
+                        <Border x:Name="ThumbChrome"
+                                Margin="3"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="4"
+                                SnapsToDevicePixels="True" />
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ThumbChrome" Property="Background" Value="#94A3B8" />
+                            </Trigger>
+                            <Trigger Property="IsDragging" Value="True">
+                                <Setter TargetName="ThumbChrome" Property="Background" Value="#64748B" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="BoardScrollBarStyle" TargetType="{x:Type ScrollBar}">
+            <Setter Property="MinWidth" Value="12" />
+            <Setter Property="MinHeight" Value="12" />
+            <Setter Property="Background" Value="#F8FAFC" />
+            <Setter Property="Foreground" Value="#CBD5E1" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type ScrollBar}">
+                        <Grid x:Name="Root"
+                              Background="{TemplateBinding Background}"
+                              SnapsToDevicePixels="True">
+                            <Track x:Name="PART_Track"
+                                   Focusable="False"
+                                   IsDirectionReversed="True">
+                                <Track.DecreaseRepeatButton>
+                                    <RepeatButton x:Name="DecreaseButton"
+                                                  Command="{x:Static ScrollBar.PageUpCommand}"
+                                                  Style="{StaticResource BoardScrollBarPageButtonStyle}" />
+                                </Track.DecreaseRepeatButton>
+                                <Track.Thumb>
+                                    <Thumb Background="{TemplateBinding Foreground}"
+                                           Style="{StaticResource BoardScrollBarThumbStyle}" />
+                                </Track.Thumb>
+                                <Track.IncreaseRepeatButton>
+                                    <RepeatButton x:Name="IncreaseButton"
+                                                  Command="{x:Static ScrollBar.PageDownCommand}"
+                                                  Style="{StaticResource BoardScrollBarPageButtonStyle}" />
+                                </Track.IncreaseRepeatButton>
+                            </Track>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="Orientation" Value="Vertical">
+                                <Setter TargetName="Root" Property="Width" Value="12" />
+                                <Setter TargetName="DecreaseButton" Property="Command" Value="{x:Static ScrollBar.PageUpCommand}" />
+                                <Setter TargetName="IncreaseButton" Property="Command" Value="{x:Static ScrollBar.PageDownCommand}" />
+                            </Trigger>
+                            <Trigger Property="Orientation" Value="Horizontal">
+                                <Setter TargetName="Root" Property="Height" Value="12" />
+                                <Setter TargetName="PART_Track" Property="IsDirectionReversed" Value="False" />
+                                <Setter TargetName="DecreaseButton" Property="Command" Value="{x:Static ScrollBar.PageLeftCommand}" />
+                                <Setter TargetName="IncreaseButton" Property="Command" Value="{x:Static ScrollBar.PageRightCommand}" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.35" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="Orientation" Value="Vertical">
+                    <Setter Property="Width" Value="12" />
+                </Trigger>
+                <Trigger Property="Orientation" Value="Horizontal">
+                    <Setter Property="Height" Value="12" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
         <Style x:Key="TopIconButtonStyle" TargetType="{x:Type Button}">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderBrush" Value="Transparent" />
@@ -130,16 +226,34 @@
                     </Grid>
                 </Border>
 
-                <Button Grid.Column="2"
-                        Style="{StaticResource TopIconButtonStyle}"
+                <Border Grid.Column="2"
+                        MinWidth="148"
+                        Height="46"
                         Margin="18,0,0,0"
+                        Padding="12,0"
                         VerticalAlignment="Center"
-                        ToolTip="天气">
-                    <materialDesign:PackIcon Kind="WeatherSunny"
-                                             Width="26"
-                                             Height="26"
-                                             Foreground="#14A6A6" />
-                </Button>
+                        Background="#F8FAFC"
+                        BorderBrush="#EEF2F6"
+                        BorderThickness="1"
+                        CornerRadius="7"
+                        ToolTip="{Binding WeatherToolTip}">
+                    <StackPanel Orientation="Horizontal"
+                                VerticalAlignment="Center">
+                        <materialDesign:PackIcon Kind="{Binding WeatherIconKind}"
+                                                 Width="22"
+                                                 Height="22"
+                                                 VerticalAlignment="Center"
+                                                 Foreground="#14A6A6" />
+                        <TextBlock Text="{Binding WeatherText}"
+                                   Margin="6,0,0,0"
+                                   VerticalAlignment="Center"
+                                   MaxWidth="180"
+                                   TextTrimming="CharacterEllipsis"
+                                   Foreground="#344054"
+                                   FontSize="13"
+                                   FontWeight="SemiBold" />
+                    </StackPanel>
+                </Border>
             </Grid>
         </Border>
 
@@ -156,6 +270,10 @@
                               VerticalScrollBarVisibility="Visible"
                               CanContentScroll="False"
                               PanningMode="Both">
+                    <ScrollViewer.Resources>
+                        <Style BasedOn="{StaticResource BoardScrollBarStyle}"
+                               TargetType="{x:Type ScrollBar}" />
+                    </ScrollViewer.Resources>
                     <Grid x:Name="TodoBoard"
                           Width="{Binding BoardWidth}"
                           Height="{Binding BoardHeight}"

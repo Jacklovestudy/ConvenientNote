@@ -3,6 +3,8 @@ using System.Diagnostics;
 using System.Windows;
 using ConvenientNote.Application.Workspaces;
 using ConvenientNote.Domain.Workspaces;
+using ConvenientNote.Services;
+using MaterialDesignThemes.Wpf;
 using Prism.Commands;
 using Prism.Mvvm;
 using Prism.Navigation.Regions;
@@ -23,6 +25,7 @@ namespace ConvenientNote.ViewModels
         private const double BoardContentPadding = 120;
 
         private readonly WorkspaceApplicationService _workspaceApplicationService;
+        private readonly OpenMeteoWeatherService _weatherService;
         private readonly TodoBoardFilter _filter;
         private readonly List<CanvasTodoViewModel> _allTodoItems = new();
         private WorkspaceId? _currentWorkspaceId;
@@ -35,15 +38,22 @@ namespace ConvenientNote.ViewModels
         private string _summary = string.Empty;
         private string _emptyStateTitle = string.Empty;
         private string _emptyStateDescription = string.Empty;
+        private string _weatherText = "天气加载中";
+        private string _weatherToolTip = "正在获取天气";
+        private PackIconKind _weatherIconKind = PackIconKind.WeatherSunny;
+        private bool _isWeatherLoading;
+        private bool _hasLoadedWeather;
 
         protected TodoBoardViewModel(
             WorkspaceApplicationService workspaceApplicationService,
+            OpenMeteoWeatherService weatherService,
             TodoBoardFilter filter,
             string viewTitle,
             string viewDescription,
             bool canAddTodo)
         {
             _workspaceApplicationService = workspaceApplicationService;
+            _weatherService = weatherService;
             _filter = filter;
             ViewTitle = viewTitle;
             ViewDescription = viewDescription;
@@ -123,6 +133,24 @@ namespace ConvenientNote.ViewModels
             private set => SetProperty(ref _emptyStateDescription, value);
         }
 
+        public string WeatherText
+        {
+            get => _weatherText;
+            private set => SetProperty(ref _weatherText, value);
+        }
+
+        public string WeatherToolTip
+        {
+            get => _weatherToolTip;
+            private set => SetProperty(ref _weatherToolTip, value);
+        }
+
+        public PackIconKind WeatherIconKind
+        {
+            get => _weatherIconKind;
+            private set => SetProperty(ref _weatherIconKind, value);
+        }
+
         public Visibility EmptyStateVisibility => TodoItems.Count == 0
             ? Visibility.Visible
             : Visibility.Collapsed;
@@ -179,6 +207,12 @@ namespace ConvenientNote.ViewModels
         public void OnNavigatedTo(NavigationContext navigationContext)
         {
             _ = LoadWorkspaceAsync();
+
+            if (!_hasLoadedWeather)
+            {
+                _hasLoadedWeather = true;
+                _ = RefreshWeatherAsync();
+            }
         }
 
         public bool IsNavigationTarget(NavigationContext navigationContext)
@@ -245,6 +279,44 @@ namespace ConvenientNote.ViewModels
             _allTodoItems.Add(CreateTodoViewModel(note));
             QuickAddTitle = string.Empty;
             RefreshVisibleTodos();
+        }
+
+        private async Task RefreshWeatherAsync()
+        {
+            if (_isWeatherLoading)
+            {
+                return;
+            }
+
+            _isWeatherLoading = true;
+            WeatherText = "天气加载中";
+            WeatherToolTip = "正在获取天气";
+
+            try
+            {
+                var weather = await _weatherService.GetCurrentWeatherAsync();
+                var locationName = GetCompactLocationName(weather.LocationName);
+                var description = GetWeatherDescription(weather.WeatherCode);
+
+                WeatherText = $"{locationName} · {description} {Math.Round(weather.TemperatureC):0}°";
+                WeatherIconKind = GetWeatherIcon(weather.WeatherCode, weather.IsDay);
+                WeatherToolTip =
+                    $"{weather.LocationName}\n" +
+                    $"{description}，{weather.TemperatureC:0.#}°C\n" +
+                    $"体感 {weather.ApparentTemperatureC:0.#}°C，风速 {weather.WindSpeedKmh:0.#} km/h\n" +
+                    $"更新时间 {weather.Time}";
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine(ex);
+                WeatherText = "天气获取失败";
+                WeatherIconKind = PackIconKind.WeatherPartlyCloudy;
+                WeatherToolTip = "天气获取失败";
+            }
+            finally
+            {
+                _isWeatherLoading = false;
+            }
         }
 
         private CanvasTodoViewModel CreateTodoViewModel(NoteSnapshot note)
@@ -366,6 +438,58 @@ namespace ConvenientNote.ViewModels
             }
 
             return date.ToString("dddd");
+        }
+
+        private static PackIconKind GetWeatherIcon(int weatherCode, bool isDay)
+        {
+            return weatherCode switch
+            {
+                0 => isDay ? PackIconKind.WeatherSunny : PackIconKind.WeatherNight,
+                >= 1 and <= 2 => isDay ? PackIconKind.WeatherPartlyCloudy : PackIconKind.WeatherNightPartlyCloudy,
+                3 => PackIconKind.WeatherCloudy,
+                45 or 48 => PackIconKind.WeatherFog,
+                >= 51 and <= 57 => PackIconKind.WeatherRainy,
+                >= 61 and <= 67 => PackIconKind.WeatherPouring,
+                >= 71 and <= 77 => PackIconKind.WeatherSnowy,
+                >= 80 and <= 82 => PackIconKind.WeatherPouring,
+                >= 85 and <= 86 => PackIconKind.WeatherSnowyHeavy,
+                >= 95 and <= 99 => PackIconKind.WeatherLightningRainy,
+                _ => PackIconKind.WeatherPartlyCloudy
+            };
+        }
+
+        private static string GetWeatherDescription(int weatherCode)
+        {
+            return weatherCode switch
+            {
+                0 => "晴",
+                1 => "大部晴朗",
+                2 => "局部多云",
+                3 => "阴",
+                45 or 48 => "雾",
+                51 or 53 or 55 => "毛毛雨",
+                56 or 57 => "冻毛毛雨",
+                61 or 63 or 65 => "雨",
+                66 or 67 => "冻雨",
+                71 or 73 or 75 => "雪",
+                77 => "雪粒",
+                80 or 81 or 82 => "阵雨",
+                85 or 86 => "阵雪",
+                95 => "雷暴",
+                96 or 99 => "雷暴伴冰雹",
+                _ => "未知天气"
+            };
+        }
+
+        private static string GetCompactLocationName(string locationName)
+        {
+            var firstPart = locationName
+                .Split('·', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+                .FirstOrDefault();
+
+            return string.IsNullOrWhiteSpace(firstPart)
+                ? "当前位置"
+                : firstPart;
         }
     }
 }
