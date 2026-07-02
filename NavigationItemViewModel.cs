@@ -5,7 +5,7 @@ namespace ConvenientNote
     public enum NavigationSection
     {
         DayTodo,
-        Recent,
+        Testing,
         Schedule,
         Inbox,
         Review,

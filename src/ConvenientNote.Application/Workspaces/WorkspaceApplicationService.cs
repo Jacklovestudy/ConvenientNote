@@ -63,10 +63,12 @@ public sealed class WorkspaceApplicationService
         double x,
         double y,
         string? title = null,
+        string boardKey = TodoBoardKeys.DayTodo,
         CancellationToken cancellationToken = default)
     {
         var workspace = await GetRequiredWorkspaceAsync(workspaceId, cancellationToken);
         var note = workspace.AddNote(
+            boardKey,
             title ?? "新待办",
             string.Empty,
             new NotePosition(x, y),
@@ -140,6 +142,18 @@ public sealed class WorkspaceApplicationService
         await _workspaceRepository.SaveAsync(workspace, cancellationToken);
     }
 
+    public async Task SetNotePriorityAsync(
+        WorkspaceId workspaceId,
+        NoteId noteId,
+        string priority,
+        CancellationToken cancellationToken = default)
+    {
+        var workspace = await GetRequiredWorkspaceAsync(workspaceId, cancellationToken);
+        workspace.SetNotePriority(noteId, priority);
+
+        await _workspaceRepository.SaveAsync(workspace, cancellationToken);
+    }
+
     public async Task DeleteNoteAsync(
         WorkspaceId workspaceId,
         NoteId noteId,
@@ -173,6 +187,8 @@ public sealed class WorkspaceApplicationService
     {
         return new NoteSnapshot(
             note.Id,
+            note.BoardKey,
+            note.Priority,
             note.Title,
             note.Content,
             note.Position.X,

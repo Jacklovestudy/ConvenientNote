@@ -26,6 +26,7 @@ namespace ConvenientNote.ViewModels
 
         private readonly WorkspaceApplicationService _workspaceApplicationService;
         private readonly OpenMeteoWeatherService _weatherService;
+        private readonly string _boardKey;
         private readonly TodoBoardFilter _filter;
         private readonly List<CanvasTodoViewModel> _allTodoItems = new();
         private WorkspaceId? _currentWorkspaceId;
@@ -47,6 +48,7 @@ namespace ConvenientNote.ViewModels
         protected TodoBoardViewModel(
             WorkspaceApplicationService workspaceApplicationService,
             OpenMeteoWeatherService weatherService,
+            string boardKey,
             TodoBoardFilter filter,
             string viewTitle,
             string viewDescription,
@@ -54,6 +56,7 @@ namespace ConvenientNote.ViewModels
         {
             _workspaceApplicationService = workspaceApplicationService;
             _weatherService = weatherService;
+            _boardKey = boardKey;
             _filter = filter;
             ViewTitle = viewTitle;
             ViewDescription = viewDescription;
@@ -193,6 +196,16 @@ namespace ConvenientNote.ViewModels
             await _workspaceApplicationService.UpdateNoteContentAsync(workspaceId, todo.Id, todo.Content);
         }
 
+        public async Task CommitTodoPriorityAsync(CanvasTodoViewModel todo)
+        {
+            if (_currentWorkspaceId is not { } workspaceId)
+            {
+                return;
+            }
+
+            await _workspaceApplicationService.SetNotePriorityAsync(workspaceId, todo.Id, todo.Priority);
+        }
+
         public async Task CommitTodoPositionAsync(CanvasTodoViewModel todo)
         {
             if (_currentWorkspaceId is not { } workspaceId)
@@ -271,10 +284,10 @@ namespace ConvenientNote.ViewModels
             }
 
             var title = string.IsNullOrWhiteSpace(QuickAddTitle) ? "新待办" : QuickAddTitle.Trim();
-            var index = _allTodoItems.Count;
+            var index = _allTodoItems.Count(todo => todo.BoardKey == _boardKey);
             var x = 32 + index % 3 * 290;
             var y = 32 + index / 3 * 180;
-            var note = await _workspaceApplicationService.CreateNoteAsync(workspaceId, x, y, title);
+            var note = await _workspaceApplicationService.CreateNoteAsync(workspaceId, x, y, title, _boardKey);
 
             _allTodoItems.Add(CreateTodoViewModel(note));
             QuickAddTitle = string.Empty;
@@ -338,11 +351,12 @@ namespace ConvenientNote.ViewModels
 
         private void RefreshVisibleTodos()
         {
+            var boardTodos = _allTodoItems.Where(todo => todo.BoardKey == _boardKey);
             var visibleTodos = _filter switch
             {
-                TodoBoardFilter.Active => _allTodoItems.Where(todo => !todo.IsCompleted),
-                TodoBoardFilter.Completed => _allTodoItems.Where(todo => todo.IsCompleted),
-                _ => _allTodoItems
+                TodoBoardFilter.Active => boardTodos.Where(todo => !todo.IsCompleted),
+                TodoBoardFilter.Completed => boardTodos.Where(todo => todo.IsCompleted),
+                _ => boardTodos
             };
 
             TodoItems.Clear();
@@ -491,5 +505,6 @@ namespace ConvenientNote.ViewModels
                 ? "当前位置"
                 : firstPart;
         }
+
     }
 }

@@ -1,4 +1,6 @@
 using ConvenientNote.Infrastructure.Persistence.Entities;
+using ConvenientNote.Application.Workspaces;
+using ConvenientNote.Domain.Notes;
 using Microsoft.EntityFrameworkCore;
 
 namespace ConvenientNote.Infrastructure.Persistence;
@@ -37,6 +39,8 @@ public sealed class ConvenientNoteDbContext : DbContext
             note.ToTable("Notes");
             note.HasKey(current => current.Id);
             note.Property(current => current.Id).ValueGeneratedNever();
+            note.Property(current => current.BoardKey).HasMaxLength(64).HasDefaultValue(TodoBoardKeys.DayTodo).IsRequired();
+            note.Property(current => current.Priority).HasMaxLength(16).HasDefaultValue(Note.DefaultPriority).IsRequired();
             note.Property(current => current.Title).HasMaxLength(80).IsRequired();
             note.Property(current => current.Content).IsRequired();
             note.Property(current => current.Color).HasMaxLength(32).IsRequired();
@@ -44,6 +48,7 @@ public sealed class ConvenientNoteDbContext : DbContext
             note.Property(current => current.UpdatedAt).IsRequired();
 
             note.HasIndex(current => current.WorkspaceId);
+            note.HasIndex(current => current.BoardKey);
             note.HasIndex(current => current.IsCompleted);
             note.HasIndex(current => current.ZIndex);
         });

@@ -4,8 +4,19 @@ namespace ConvenientNote.Domain.Notes;
 
 public sealed class Note
 {
+    public const string DefaultBoardKey = "day-todo";
+    public const string DefaultPriority = "blue";
+    private static readonly HashSet<string> AllowedPriorities = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "red",
+        "green",
+        "blue"
+    };
+
     public Note(
         NoteId id,
+        string boardKey,
+        string priority,
         string title,
         string content,
         NotePosition position,
@@ -17,6 +28,8 @@ public sealed class Note
         DateTimeOffset updatedAt)
     {
         Id = id;
+        BoardKey = NormalizeBoardKey(boardKey);
+        Priority = NormalizePriority(priority);
         Title = NormalizeTitle(title);
         Content = content ?? string.Empty;
         Position = position;
@@ -29,6 +42,10 @@ public sealed class Note
     }
 
     public NoteId Id { get; }
+
+    public string BoardKey { get; }
+
+    public string Priority { get; private set; }
 
     public string Title { get; private set; }
 
@@ -49,6 +66,7 @@ public sealed class Note
     public DateTimeOffset UpdatedAt { get; private set; }
 
     public static Note Create(
+        string boardKey,
         string title,
         string content,
         NotePosition position,
@@ -60,6 +78,8 @@ public sealed class Note
 
         return new Note(
             NoteId.New(),
+            boardKey,
+            DefaultPriority,
             title,
             content,
             position,
@@ -113,6 +133,12 @@ public sealed class Note
         Touch();
     }
 
+    public void SetPriority(string priority)
+    {
+        Priority = NormalizePriority(priority);
+        Touch();
+    }
+
     private static string NormalizeTitle(string title)
     {
         var normalized = string.IsNullOrWhiteSpace(title) ? "新便签" : title.Trim();
@@ -120,6 +146,30 @@ public sealed class Note
         if (normalized.Length > 80)
         {
             throw new DomainException("Note title cannot exceed 80 characters.");
+        }
+
+        return normalized;
+    }
+
+    public static string NormalizeBoardKey(string? boardKey)
+    {
+        var normalized = string.IsNullOrWhiteSpace(boardKey) ? DefaultBoardKey : boardKey.Trim();
+
+        if (normalized.Length > 64)
+        {
+            throw new DomainException("Note board key cannot exceed 64 characters.");
+        }
+
+        return normalized;
+    }
+
+    public static string NormalizePriority(string? priority)
+    {
+        var normalized = string.IsNullOrWhiteSpace(priority) ? DefaultPriority : priority.Trim().ToLowerInvariant();
+
+        if (!AllowedPriorities.Contains(normalized))
+        {
+            throw new DomainException("Note priority must be red, green, or blue.");
         }
 
         return normalized;

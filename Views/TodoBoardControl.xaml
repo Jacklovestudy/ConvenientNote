@@ -321,6 +321,7 @@
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="Auto" />
                                                     <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
                                                 </Grid.ColumnDefinitions>
                                                 <CheckBox IsChecked="{Binding IsCompleted, Mode=TwoWay}"
                                                           VerticalAlignment="Center"
@@ -333,6 +334,32 @@
                                                          FontWeight="SemiBold"
                                                          Foreground="#111827"
                                                          LostFocus="TodoTitle_LostFocus" />
+                                                <Button Grid.Column="2"
+                                                        Width="20"
+                                                        Height="20"
+                                                        MinWidth="20"
+                                                        Margin="8,0,0,0"
+                                                        Padding="0"
+                                                        VerticalAlignment="Top"
+                                                        Background="Transparent"
+                                                        BorderThickness="0"
+                                                        Cursor="Hand"
+                                                        ToolTip="{Binding PriorityLabel}"
+                                                        Click="PriorityButton_Click">
+                                                    <Border Width="14"
+                                                            Height="14"
+                                                            Background="{Binding PriorityBrush}"
+                                                            BorderBrush="#FFFFFF"
+                                                            BorderThickness="1"
+                                                            CornerRadius="3">
+                                                        <Border.Effect>
+                                                            <DropShadowEffect Color="#000000"
+                                                                              BlurRadius="4"
+                                                                              ShadowDepth="0"
+                                                                              Opacity="0.18" />
+                                                        </Border.Effect>
+                                                    </Border>
+                                                </Button>
                                             </Grid>
 
                                             <TextBox Grid.Row="1"

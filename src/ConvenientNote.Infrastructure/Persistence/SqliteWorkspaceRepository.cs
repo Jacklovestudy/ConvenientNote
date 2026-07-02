@@ -1,4 +1,5 @@
 using ConvenientNote.Application.Abstractions;
+using ConvenientNote.Application.Workspaces;
 using ConvenientNote.Domain.Notes;
 using ConvenientNote.Domain.Workspaces;
 using ConvenientNote.Infrastructure.Persistence.Entities;
@@ -156,8 +157,72 @@ public sealed class SqliteWorkspaceRepository : IWorkspaceRepository
         }
 
         await context.Database.EnsureCreatedAsync(cancellationToken);
+        await EnsureNoteBoardKeyColumnAsync(context, cancellationToken);
+        await EnsureNotePriorityColumnAsync(context, cancellationToken);
         await TryImportFromJsonAsync(context, cancellationToken);
         _databaseInitialized = true;
+    }
+
+    private static async Task EnsureNoteBoardKeyColumnAsync(
+        ConvenientNoteDbContext context,
+        CancellationToken cancellationToken)
+    {
+        var connection = context.Database.GetDbConnection();
+        await context.Database.OpenConnectionAsync(cancellationToken);
+
+        await using var command = connection.CreateCommand();
+        command.CommandText = "PRAGMA table_info(\"Notes\");";
+
+        var hasBoardKey = false;
+        await using (var reader = await command.ExecuteReaderAsync(cancellationToken))
+        {
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                if (string.Equals(reader.GetString(1), "BoardKey", StringComparison.OrdinalIgnoreCase))
+                {
+                    hasBoardKey = true;
+                    break;
+                }
+            }
+        }
+
+        if (!hasBoardKey)
+        {
+            await context.Database.ExecuteSqlRawAsync(
+                $"ALTER TABLE \"Notes\" ADD COLUMN \"BoardKey\" TEXT NOT NULL DEFAULT '{TodoBoardKeys.DayTodo}';",
+                cancellationToken);
+        }
+    }
+
+    private static async Task EnsureNotePriorityColumnAsync(
+        ConvenientNoteDbContext context,
+        CancellationToken cancellationToken)
+    {
+        var connection = context.Database.GetDbConnection();
+        await context.Database.OpenConnectionAsync(cancellationToken);
+
+        await using var command = connection.CreateCommand();
+        command.CommandText = "PRAGMA table_info(\"Notes\");";
+
+        var hasPriority = false;
+        await using (var reader = await command.ExecuteReaderAsync(cancellationToken))
+        {
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                if (string.Equals(reader.GetString(1), "Priority", StringComparison.OrdinalIgnoreCase))
+                {
+                    hasPriority = true;
+                    break;
+                }
+            }
+        }
+
+        if (!hasPriority)
+        {
+            await context.Database.ExecuteSqlRawAsync(
+                $"ALTER TABLE \"Notes\" ADD COLUMN \"Priority\" TEXT NOT NULL DEFAULT '{Note.DefaultPriority}';",
+                cancellationToken);
+        }
     }
 
     private static async Task TryImportFromJsonAsync(
@@ -195,6 +260,8 @@ public sealed class SqliteWorkspaceRepository : IWorkspaceRepository
     {
         var notes = entity.Notes.Select(note => new Note(
             new NoteId(note.Id),
+            note.BoardKey,
+            note.Priority,
             note.Title,
             note.Content,
             new NotePosition(note.X, note.Y),
@@ -245,6 +312,8 @@ public sealed class SqliteWorkspaceRepository : IWorkspaceRepository
         WorkspaceId workspaceId)
     {
         entity.WorkspaceId = workspaceId.Value;
+        entity.BoardKey = note.BoardKey;
+        entity.Priority = note.Priority;
         entity.Title = note.Title;
         entity.Content = note.Content;
         entity.X = note.Position.X;

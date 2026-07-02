@@ -8,6 +8,7 @@ namespace ConvenientNote
     {
         private readonly Func<CanvasTodoViewModel, Task> _completionChangedAsync;
         private string _content;
+        private string _priority;
         private string _title;
         private double _x;
         private double _y;
@@ -18,6 +19,8 @@ namespace ConvenientNote
             Func<CanvasTodoViewModel, Task> completionChangedAsync)
         {
             Id = note.Id;
+            BoardKey = note.BoardKey;
+            _priority = note.Priority;
             _title = note.Title;
             _content = note.Content;
             _x = note.X;
@@ -31,6 +34,35 @@ namespace ConvenientNote
         }
 
         public NoteId Id { get; }
+
+        public string BoardKey { get; }
+
+        public string Priority
+        {
+            get => _priority;
+            private set
+            {
+                if (SetProperty(ref _priority, value))
+                {
+                    RaisePropertyChanged(nameof(PriorityBrush));
+                    RaisePropertyChanged(nameof(PriorityLabel));
+                }
+            }
+        }
+
+        public string PriorityBrush => Priority switch
+        {
+            "red" => "#EF4444",
+            "green" => "#22C55E",
+            _ => "#3B82F6"
+        };
+
+        public string PriorityLabel => Priority switch
+        {
+            "red" => "红色优先级",
+            "green" => "绿色优先级",
+            _ => "蓝色优先级"
+        };
 
         public string Title
         {
@@ -80,6 +112,16 @@ namespace ConvenientNote
         {
             X = Math.Max(0, x);
             Y = Math.Max(0, y);
+        }
+
+        public void CyclePriority()
+        {
+            Priority = Priority switch
+            {
+                "blue" => "green",
+                "green" => "red",
+                _ => "blue"
+            };
         }
     }
 }

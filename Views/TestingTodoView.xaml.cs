@@ -2,9 +2,9 @@ using System.Windows.Controls;
 
 namespace ConvenientNote.Views
 {
-    public partial class RecentTodoView : UserControl
+    public partial class TestingTodoView : UserControl
     {
-        public RecentTodoView()
+        public TestingTodoView()
         {
             InitializeComponent();
         }

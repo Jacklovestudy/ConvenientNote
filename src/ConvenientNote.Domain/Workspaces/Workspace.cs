@@ -48,14 +48,17 @@ public sealed class Workspace
     }
 
     public Note AddNote(
+        string boardKey,
         string title,
         string content,
         NotePosition position,
         NoteSize size,
         string color)
     {
-        var nextZIndex = _notes.Count == 0 ? 1 : _notes.Max(note => note.ZIndex) + 1;
-        var note = Note.Create(title, content, position, size, color, nextZIndex);
+        var normalizedBoardKey = Note.NormalizeBoardKey(boardKey);
+        var boardNotes = _notes.Where(note => note.BoardKey == normalizedBoardKey).ToList();
+        var nextZIndex = boardNotes.Count == 0 ? 1 : boardNotes.Max(note => note.ZIndex) + 1;
+        var note = Note.Create(normalizedBoardKey, title, content, position, size, color, nextZIndex);
 
         _notes.Add(note);
         Touch();
@@ -96,6 +99,12 @@ public sealed class Workspace
     public void SetNoteCompletion(NoteId noteId, bool isCompleted)
     {
         GetRequiredNote(noteId).SetCompletion(isCompleted);
+        Touch();
+    }
+
+    public void SetNotePriority(NoteId noteId, string priority)
+    {
+        GetRequiredNote(noteId).SetPriority(priority);
         Touch();
     }
 

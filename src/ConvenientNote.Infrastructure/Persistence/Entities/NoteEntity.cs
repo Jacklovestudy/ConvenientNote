@@ -6,6 +6,10 @@ public sealed class NoteEntity
 
     public Guid WorkspaceId { get; set; }
 
+    public string BoardKey { get; set; } = "day-todo";
+
+    public string Priority { get; set; } = "blue";
+
     public string Title { get; set; } = string.Empty;
 
     public string Content { get; set; } = string.Empty;

@@ -144,6 +144,18 @@ namespace ConvenientNote.Views
             }
         }
 
+        private async void PriorityButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is FrameworkElement { DataContext: CanvasTodoViewModel todo } &&
+                DataContext is TodoBoardViewModel viewModel)
+            {
+                todo.CyclePriority();
+                await viewModel.CommitTodoPriorityAsync(todo);
+            }
+
+            e.Handled = true;
+        }
+
         private Point ApplyAlignmentSnap(
             CanvasTodoViewModel draggedTodo,
             double x,

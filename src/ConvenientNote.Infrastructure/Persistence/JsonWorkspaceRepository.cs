@@ -1,5 +1,6 @@
 using System.Text.Json;
 using ConvenientNote.Application.Abstractions;
+using ConvenientNote.Application.Workspaces;
 using ConvenientNote.Domain.Notes;
 using ConvenientNote.Domain.Workspaces;
 
@@ -98,6 +99,8 @@ public sealed class JsonWorkspaceRepository : IWorkspaceRepository
     {
         var notes = record.Notes.Select(note => new Note(
             new NoteId(note.Id),
+            note.BoardKey,
+            note.Priority,
             note.Title,
             note.Content,
             new NotePosition(note.X, note.Y),
@@ -127,6 +130,8 @@ public sealed class JsonWorkspaceRepository : IWorkspaceRepository
             Notes = workspace.Notes.Select(note => new NoteRecord
             {
                 Id = note.Id.Value,
+                BoardKey = note.BoardKey,
+                Priority = note.Priority,
                 Title = note.Title,
                 Content = note.Content,
                 X = note.Position.X,
@@ -158,6 +163,10 @@ public sealed class JsonWorkspaceRepository : IWorkspaceRepository
     private sealed record NoteRecord
     {
         public Guid Id { get; init; }
+
+        public string BoardKey { get; init; } = TodoBoardKeys.DayTodo;
+
+        public string Priority { get; init; } = Note.DefaultPriority;
 
         public string Title { get; init; } = string.Empty;
 

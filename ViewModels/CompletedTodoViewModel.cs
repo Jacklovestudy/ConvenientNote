@@ -11,6 +11,7 @@ namespace ConvenientNote.ViewModels
             : base(
                 workspaceApplicationService,
                 weatherService,
+                TodoBoardKeys.DayTodo,
                 TodoBoardFilter.Completed,
                 "已达成",
                 "已经完成的事项",

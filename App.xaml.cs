@@ -25,7 +25,7 @@ namespace ConvenientNote
             containerRegistry.RegisterSingleton<WorkspaceApplicationService>();
             containerRegistry.RegisterSingleton<OpenMeteoWeatherService>();
             containerRegistry.RegisterForNavigation<DayTodoView>();
-            containerRegistry.RegisterForNavigation<RecentTodoView>();
+            containerRegistry.RegisterForNavigation<TestingTodoView>();
             containerRegistry.RegisterForNavigation<ScheduleView>();
             containerRegistry.RegisterForNavigation<InboxView>();
             containerRegistry.RegisterForNavigation<ReviewView>();
