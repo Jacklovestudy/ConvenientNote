@@ -23,6 +23,8 @@ namespace ConvenientNote.ViewModels
         private const double MinimumBoardWidth = 1800;
         private const double MinimumBoardHeight = 1100;
         private const double BoardContentPadding = 120;
+        private const double InitialTodoOffset = 32;
+        private const double TodoHorizontalGap = 30;
 
         private readonly WorkspaceApplicationService _workspaceApplicationService;
         private readonly OpenMeteoWeatherService _weatherService;
@@ -284,9 +286,11 @@ namespace ConvenientNote.ViewModels
             }
 
             var title = string.IsNullOrWhiteSpace(QuickAddTitle) ? "新待办" : QuickAddTitle.Trim();
-            var index = _allTodoItems.Count(todo => todo.BoardKey == _boardKey);
-            var x = 32 + index % 3 * 290;
-            var y = 32 + index / 3 * 180;
+            var latestTodo = TodoItems.LastOrDefault();
+            var x = latestTodo is null
+                ? InitialTodoOffset
+                : latestTodo.X + latestTodo.Width + TodoHorizontalGap;
+            var y = latestTodo?.Y ?? InitialTodoOffset;
             var note = await _workspaceApplicationService.CreateNoteAsync(workspaceId, x, y, title, _boardKey);
 
             _allTodoItems.Add(CreateTodoViewModel(note));
