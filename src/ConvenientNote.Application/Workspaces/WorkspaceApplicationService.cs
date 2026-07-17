@@ -93,6 +93,26 @@ public sealed class WorkspaceApplicationService
         await _workspaceRepository.SaveAsync(workspace, cancellationToken);
     }
 
+    public async Task MoveNotesAsync(
+        WorkspaceId workspaceId,
+        IReadOnlyCollection<NotePositionUpdate> positionUpdates,
+        CancellationToken cancellationToken = default)
+    {
+        if (positionUpdates.Count == 0)
+        {
+            return;
+        }
+
+        var workspace = await GetRequiredWorkspaceAsync(workspaceId, cancellationToken);
+
+        foreach (var update in positionUpdates)
+        {
+            workspace.MoveNote(update.NoteId, new NotePosition(update.X, update.Y));
+        }
+
+        await _workspaceRepository.SaveAsync(workspace, cancellationToken);
+    }
+
     public async Task ResizeNoteAsync(
         WorkspaceId workspaceId,
         NoteId noteId,

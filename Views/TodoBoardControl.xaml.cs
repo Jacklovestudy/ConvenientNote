@@ -43,6 +43,23 @@ namespace ConvenientNote.Views
             e.Handled = true;
         }
 
+        private async void ArrangeTodosButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is not TodoBoardViewModel viewModel)
+            {
+                return;
+            }
+
+            var arranged = await viewModel.ArrangeTodosAsync(
+                TodoBoardScrollViewer.ViewportWidth);
+
+            if (arranged)
+            {
+                TodoBoardScrollViewer.ScrollToHorizontalOffset(0);
+                TodoBoardScrollViewer.ScrollToVerticalOffset(0);
+            }
+        }
+
         private void TodoCard_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             if (IsInteractiveElement(e.OriginalSource as DependencyObject))

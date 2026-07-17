@@ -146,6 +146,7 @@
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
                 <Border Height="46"
@@ -168,10 +169,40 @@
                     </TextBox>
                 </Border>
 
-                <Border Grid.Column="1"
+                <Button Grid.Column="1"
+                        Height="46"
+                        MinWidth="112"
+                        Margin="12,0,0,0"
+                        Padding="12,0"
+                        VerticalAlignment="Center"
+                        Background="#F8FAFC"
+                        BorderBrush="#D0D5DD"
+                        BorderThickness="1"
+                        Foreground="#344054"
+                        Cursor="Hand"
+                        IsEnabled="{Binding CanArrangeTodos}"
+                        Click="ArrangeTodosButton_Click"
+                        ToolTip="按当前位置从上到下、从左到右重新排列">
+                    <StackPanel Orientation="Horizontal"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center">
+                        <materialDesign:PackIcon Kind="ViewGridOutline"
+                                                 Width="19"
+                                                 Height="19"
+                                                 VerticalAlignment="Center"
+                                                 Foreground="#3F51B5" />
+                        <TextBlock Margin="7,0,0,0"
+                                   VerticalAlignment="Center"
+                                   Text="整理便签"
+                                   FontSize="13"
+                                   FontWeight="SemiBold" />
+                    </StackPanel>
+                </Button>
+
+                <Border Grid.Column="2"
                         Height="46"
                         MinWidth="194"
-                        Margin="20,0,0,0"
+                        Margin="12,0,0,0"
                         VerticalAlignment="Center"
                         Background="#F8FAFC"
                         BorderBrush="#EEF2F6"
@@ -226,7 +257,7 @@
                     </Grid>
                 </Border>
 
-                <Border Grid.Column="2"
+                <Border Grid.Column="3"
                         MinWidth="148"
                         Height="46"
                         Margin="18,0,0,0"

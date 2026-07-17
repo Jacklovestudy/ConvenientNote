@@ -25,6 +25,8 @@ namespace ConvenientNote.ViewModels
         private const double BoardContentPadding = 120;
         private const double InitialTodoOffset = 32;
         private const double TodoHorizontalGap = 30;
+        private const double TodoVerticalGap = 24;
+        private const double MinimumArrangeViewportWidth = 600;
 
         private readonly WorkspaceApplicationService _workspaceApplicationService;
         private readonly OpenMeteoWeatherService _weatherService;
@@ -46,6 +48,7 @@ namespace ConvenientNote.ViewModels
         private PackIconKind _weatherIconKind = PackIconKind.WeatherSunny;
         private bool _isWeatherLoading;
         private bool _hasLoadedWeather;
+        private bool _isArrangingTodos;
 
         protected TodoBoardViewModel(
             WorkspaceApplicationService workspaceApplicationService,
@@ -160,6 +163,8 @@ namespace ConvenientNote.ViewModels
             ? Visibility.Visible
             : Visibility.Collapsed;
 
+        public bool CanArrangeTodos => TodoItems.Count > 1 && !_isArrangingTodos;
+
         public ObservableCollection<DateTabViewModel> DateTabs { get; } = new();
 
         public ObservableCollection<CanvasTodoViewModel> TodoItems { get; } = new();
@@ -217,6 +222,81 @@ namespace ConvenientNote.ViewModels
 
             await _workspaceApplicationService.MoveNoteAsync(workspaceId, todo.Id, todo.X, todo.Y);
             RefreshBoardSize();
+        }
+
+        public async Task<bool> ArrangeTodosAsync(double viewportWidth)
+        {
+            if (!CanArrangeTodos || _currentWorkspaceId is not { } workspaceId)
+            {
+                return false;
+            }
+
+            _isArrangingTodos = true;
+            RaisePropertyChanged(nameof(CanArrangeTodos));
+
+            var originalPositions = TodoItems
+                .Select(todo => new NotePositionUpdate(todo.Id, todo.X, todo.Y))
+                .ToList();
+
+            var maximumTodoWidth = TodoItems.Max(todo => todo.Width);
+            var maximumTodoHeight = TodoItems.Max(todo => todo.Height);
+            var rowHeight = maximumTodoHeight + TodoVerticalGap;
+            var orderedTodos = TodoItems
+                .OrderBy(todo => Math.Round(todo.Y / rowHeight))
+                .ThenBy(todo => todo.X)
+                .ThenBy(todo => todo.Y)
+                .ToList();
+
+            var usableViewportWidth = Math.Max(MinimumArrangeViewportWidth, viewportWidth);
+            var columnWidth = maximumTodoWidth + TodoHorizontalGap;
+            var columnCount = Math.Max(
+                1,
+                (int)Math.Floor(
+                    (usableViewportWidth - (InitialTodoOffset * 2) + TodoHorizontalGap) /
+                    columnWidth));
+
+            var arrangedPositions = new List<NotePositionUpdate>(orderedTodos.Count);
+
+            for (var index = 0; index < orderedTodos.Count; index++)
+            {
+                var todo = orderedTodos[index];
+                var column = index % columnCount;
+                var row = index / columnCount;
+                var x = InitialTodoOffset + column * columnWidth;
+                var y = InitialTodoOffset + row * rowHeight;
+
+                todo.MoveTo(x, y);
+                arrangedPositions.Add(new NotePositionUpdate(todo.Id, x, y));
+            }
+
+            RefreshBoardSize();
+
+            try
+            {
+                await _workspaceApplicationService.MoveNotesAsync(
+                    workspaceId,
+                    arrangedPositions);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine(ex);
+
+                foreach (var originalPosition in originalPositions)
+                {
+                    var todo = TodoItems.FirstOrDefault(
+                        current => current.Id == originalPosition.NoteId);
+                    todo?.MoveTo(originalPosition.X, originalPosition.Y);
+                }
+
+                RefreshBoardSize();
+                return false;
+            }
+            finally
+            {
+                _isArrangingTodos = false;
+                RaisePropertyChanged(nameof(CanArrangeTodos));
+            }
         }
 
         public void OnNavigatedTo(NavigationContext navigationContext)
@@ -371,6 +451,7 @@ namespace ConvenientNote.ViewModels
 
             RefreshBoardSize();
             RefreshViewStatus();
+            RaisePropertyChanged(nameof(CanArrangeTodos));
         }
 
         private void RefreshBoardSize()
