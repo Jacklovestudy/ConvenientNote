@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Windows;
 using ConvenientNote.Application.Workspaces;
+using ConvenientNote.Domain.Notes;
 using ConvenientNote.Domain.Workspaces;
 using ConvenientNote.Services;
 using MaterialDesignThemes.Wpf;
@@ -33,6 +34,7 @@ namespace ConvenientNote.ViewModels
         private readonly string _boardKey;
         private readonly TodoBoardFilter _filter;
         private readonly List<CanvasTodoViewModel> _allTodoItems = new();
+        private readonly HashSet<NoteId> _deletingTodoIds = new();
         private WorkspaceId? _currentWorkspaceId;
         private DateTime _selectedDate = DateTime.Today;
         private double _boardWidth = MinimumBoardWidth;
@@ -185,7 +187,8 @@ namespace ConvenientNote.ViewModels
 
         public async Task CommitTodoTitleAsync(CanvasTodoViewModel todo)
         {
-            if (_currentWorkspaceId is not { } workspaceId)
+            if (_deletingTodoIds.Contains(todo.Id) ||
+                _currentWorkspaceId is not { } workspaceId)
             {
                 return;
             }
@@ -195,7 +198,8 @@ namespace ConvenientNote.ViewModels
 
         public async Task CommitTodoContentAsync(CanvasTodoViewModel todo)
         {
-            if (_currentWorkspaceId is not { } workspaceId)
+            if (_deletingTodoIds.Contains(todo.Id) ||
+                _currentWorkspaceId is not { } workspaceId)
             {
                 return;
             }
@@ -226,7 +230,8 @@ namespace ConvenientNote.ViewModels
 
         public async Task DeleteTodoAsync(CanvasTodoViewModel todo)
         {
-            if (_currentWorkspaceId is not { } workspaceId)
+            if (_currentWorkspaceId is not { } workspaceId ||
+                !_deletingTodoIds.Add(todo.Id))
             {
                 return;
             }
@@ -234,12 +239,15 @@ namespace ConvenientNote.ViewModels
             try
             {
                 await _workspaceApplicationService.DeleteNoteAsync(workspaceId, todo.Id);
-                await LoadWorkspaceAsync();
             }
             catch (Exception ex)
             {
+                _deletingTodoIds.Remove(todo.Id);
                 Debug.WriteLine(ex);
+                return;
             }
+
+            await LoadWorkspaceAsync();
         }
 
         public async Task<bool> ArrangeTodosAsync(double viewportWidth)
