@@ -4,5 +4,8 @@
     <Project Path="src/ConvenientNote.Domain/ConvenientNote.Domain.csproj" />
     <Project Path="src/ConvenientNote.Infrastructure/ConvenientNote.Infrastructure.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/ConvenientNote.Tests/ConvenientNote.Tests.csproj" />
+  </Folder>
   <Project Path="ConvenientNote.csproj" />
 </Solution>

@@ -224,6 +224,24 @@ namespace ConvenientNote.ViewModels
             RefreshBoardSize();
         }
 
+        public async Task DeleteTodoAsync(CanvasTodoViewModel todo)
+        {
+            if (_currentWorkspaceId is not { } workspaceId)
+            {
+                return;
+            }
+
+            try
+            {
+                await _workspaceApplicationService.DeleteNoteAsync(workspaceId, todo.Id);
+                await LoadWorkspaceAsync();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine(ex);
+            }
+        }
+
         public async Task<bool> ArrangeTodosAsync(double viewportWidth)
         {
             if (!CanArrangeTodos || _currentWorkspaceId is not { } workspaceId)
