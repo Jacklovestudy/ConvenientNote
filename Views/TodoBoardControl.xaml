@@ -339,6 +339,18 @@
                                             PreviewMouseLeftButtonDown="TodoCard_PreviewMouseLeftButtonDown"
                                             PreviewMouseMove="TodoCard_PreviewMouseMove"
                                             PreviewMouseLeftButtonUp="TodoCard_PreviewMouseLeftButtonUp">
+                                        <Border.ContextMenu>
+                                            <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+                                                <MenuItem Header="删除便签"
+                                                          Foreground="#B42318"
+                                                          Click="TodoDeleteMenuItem_Click">
+                                                    <MenuItem.Icon>
+                                                        <materialDesign:PackIcon Kind="DeleteOutline"
+                                                                                 Foreground="#B42318" />
+                                                    </MenuItem.Icon>
+                                                </MenuItem>
+                                            </ContextMenu>
+                                        </Border.ContextMenu>
                                         <Border.RenderTransform>
                                             <ScaleTransform ScaleX="1" ScaleY="1" />
                                         </Border.RenderTransform>
@@ -364,7 +376,33 @@
                                                          FontSize="15"
                                                          FontWeight="SemiBold"
                                                          Foreground="#111827"
-                                                         LostFocus="TodoTitle_LostFocus" />
+                                                         LostFocus="TodoTitle_LostFocus">
+                                                    <TextBox.ContextMenu>
+                                                        <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+                                                            <MenuItem Header="剪切"
+                                                                      Command="ApplicationCommands.Cut"
+                                                                      InputGestureText="Ctrl+X" />
+                                                            <MenuItem Header="复制"
+                                                                      Command="ApplicationCommands.Copy"
+                                                                      InputGestureText="Ctrl+C" />
+                                                            <MenuItem Header="粘贴"
+                                                                      Command="ApplicationCommands.Paste"
+                                                                      InputGestureText="Ctrl+V" />
+                                                            <MenuItem Header="全选"
+                                                                      Command="ApplicationCommands.SelectAll"
+                                                                      InputGestureText="Ctrl+A" />
+                                                            <Separator />
+                                                            <MenuItem Header="删除便签"
+                                                                      Foreground="#B42318"
+                                                                      Click="TodoDeleteMenuItem_Click">
+                                                                <MenuItem.Icon>
+                                                                    <materialDesign:PackIcon Kind="DeleteOutline"
+                                                                                             Foreground="#B42318" />
+                                                                </MenuItem.Icon>
+                                                            </MenuItem>
+                                                        </ContextMenu>
+                                                    </TextBox.ContextMenu>
+                                                </TextBox>
                                                 <Button Grid.Column="2"
                                                         Width="20"
                                                         Height="20"
@@ -402,7 +440,33 @@
                                                      Background="Transparent"
                                                      Foreground="#475467"
                                                      Margin="24,8,0,0"
-                                                     LostFocus="TodoContent_LostFocus" />
+                                                     LostFocus="TodoContent_LostFocus">
+                                                <TextBox.ContextMenu>
+                                                    <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+                                                        <MenuItem Header="剪切"
+                                                                  Command="ApplicationCommands.Cut"
+                                                                  InputGestureText="Ctrl+X" />
+                                                        <MenuItem Header="复制"
+                                                                  Command="ApplicationCommands.Copy"
+                                                                  InputGestureText="Ctrl+C" />
+                                                        <MenuItem Header="粘贴"
+                                                                  Command="ApplicationCommands.Paste"
+                                                                  InputGestureText="Ctrl+V" />
+                                                        <MenuItem Header="全选"
+                                                                  Command="ApplicationCommands.SelectAll"
+                                                                  InputGestureText="Ctrl+A" />
+                                                        <Separator />
+                                                        <MenuItem Header="删除便签"
+                                                                  Foreground="#B42318"
+                                                                  Click="TodoDeleteMenuItem_Click">
+                                                            <MenuItem.Icon>
+                                                                <materialDesign:PackIcon Kind="DeleteOutline"
+                                                                                         Foreground="#B42318" />
+                                                            </MenuItem.Icon>
+                                                        </MenuItem>
+                                                    </ContextMenu>
+                                                </TextBox.ContextMenu>
+                                            </TextBox>
                                         </Grid>
                                     </Border>
                                 </DataTemplate>

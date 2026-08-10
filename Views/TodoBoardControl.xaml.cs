@@ -60,6 +60,22 @@ namespace ConvenientNote.Views
             }
         }
 
+        private async void TodoDeleteMenuItem_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (sender is FrameworkElement { DataContext: CanvasTodoViewModel todo } &&
+                    DataContext is TodoBoardViewModel viewModel)
+                {
+                    await viewModel.DeleteTodoAsync(todo);
+                }
+            }
+            finally
+            {
+                e.Handled = true;
+            }
+        }
+
         private void TodoCard_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             if (IsInteractiveElement(e.OriginalSource as DependencyObject))
