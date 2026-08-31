@@ -20,6 +20,7 @@
             <RowDefinition Height="72" />
             <RowDefinition Height="52" />
             <RowDefinition Height="*" />
+            <RowDefinition Height="30" />
         </Grid.RowDefinitions>
 
         <Border Background="White" BorderBrush="#DFE4EA" BorderThickness="0,0,0,1" Padding="18,10">
@@ -29,9 +30,7 @@
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <Button Width="42" Height="42" Click="BackButton_Click" ToolTip="返回笔记墙 (Esc)" AutomationProperties.Name="返回笔记墙">
-                    <materialDesign:PackIcon Kind="ArrowLeft" Width="22" Height="22" />
-                </Button>
+                <Border Width="42" />
                 <TextBox x:Name="TitleTextBox"
                          Grid.Column="1"
                          Margin="16,0"
@@ -44,7 +43,19 @@
                          FontSize="22"
                          FontWeight="SemiBold"
                          AutomationProperties.Name="笔记标题" />
-                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                <StackPanel x:Name="HeaderActionsPanel" Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button x:Name="HeaderBackButton"
+                            Style="{StaticResource EditorToolButton}"
+                            MinWidth="82"
+                            Margin="0,0,14,0"
+                            Click="BackButton_Click"
+                            ToolTip="保存并返回笔记墙 (Esc)"
+                            AutomationProperties.Name="返回笔记墙">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="ArrowLeft" Width="18" Height="18" VerticalAlignment="Center" />
+                            <TextBlock Margin="6,0,0,0" VerticalAlignment="Center" Text="返回" />
+                        </StackPanel>
+                    </Button>
                     <TextBlock Text="{Binding SaveStatus}" Margin="0,0,14,0" VerticalAlignment="Center" Foreground="#667085" FontSize="12" />
                     <Button Style="{StaticResource EditorToolButton}" Command="{Binding TogglePinnedCommand}" ToolTip="置顶笔记">
                         <materialDesign:PackIcon Kind="PinOutline" Width="20" Height="20" />
@@ -86,6 +97,24 @@
                         <ComboBoxItem Content="32" Tag="32" />
                         <ComboBoxItem Content="36" Tag="36" />
                     </ComboBox>
+                    <ComboBox x:Name="LineSpacingComboBox"
+                              Width="88"
+                              Height="34"
+                              Margin="8,0,0,0"
+                              IsEditable="True"
+                              IsTextSearchEnabled="False"
+                              ToolTip="行距（可输入 0.8–3.0）"
+                              AutomationProperties.Name="行距"
+                              SelectionChanged="LineSpacingComboBox_SelectionChanged"
+                              LostKeyboardFocus="LineSpacingComboBox_LostKeyboardFocus"
+                              PreviewKeyDown="LineSpacingComboBox_PreviewKeyDown">
+                        <ComboBoxItem Content="行距 1.0" Tag="1.0" IsSelected="True" />
+                        <ComboBoxItem Content="行距 1.15" Tag="1.15" />
+                        <ComboBoxItem Content="行距 1.5" Tag="1.5" />
+                        <ComboBoxItem Content="行距 2.0" Tag="2.0" />
+                        <ComboBoxItem Content="行距 2.5" Tag="2.5" />
+                        <ComboBoxItem Content="行距 3.0" Tag="3.0" />
+                    </ComboBox>
                     <Separator Margin="8,0" />
                     <Button Style="{StaticResource EditorToolButton}" Command="{x:Static documents:EditingCommands.ToggleBold}" CommandTarget="{Binding ElementName=Editor}" ToolTip="粗体 (Ctrl+B)"><TextBlock Text="B" FontWeight="Bold" /></Button>
                     <Button Style="{StaticResource EditorToolButton}" Command="{x:Static documents:EditingCommands.ToggleItalic}" CommandTarget="{Binding ElementName=Editor}" ToolTip="斜体 (Ctrl+I)"><TextBlock Text="I" FontStyle="Italic" /></Button>
@@ -113,12 +142,14 @@
             </Grid.ColumnDefinitions>
             <Border Background="White" CornerRadius="10" Padding="0">
                 <RichTextBox x:Name="Editor"
-                             Padding="48,36"
+                             Padding="28,24"
                              BorderThickness="0"
                              Background="White"
                              Foreground="#172033"
                              FontFamily="Segoe UI"
                              FontSize="15"
+                             HorizontalContentAlignment="Stretch"
+                             VerticalContentAlignment="Top"
                              AcceptsTab="True"
                              AllowDrop="True"
                              VerticalScrollBarVisibility="Auto"
@@ -151,10 +182,10 @@
         <Border x:Name="SaveFeedbackBorder"
                 Grid.Row="2"
                 Panel.ZIndex="20"
-                Margin="0,0,0,28"
+                Margin="0,20,0,0"
                 Padding="14,8"
                 HorizontalAlignment="Center"
-                VerticalAlignment="Bottom"
+                VerticalAlignment="Top"
                 Background="#172033"
                 CornerRadius="6"
                 IsHitTestVisible="False"
@@ -177,6 +208,20 @@
                            AutomationProperties.Name="已保存"
                            Text="已保存" />
             </StackPanel>
+        </Border>
+
+        <Border x:Name="EditorStatusBar"
+                Grid.Row="3"
+                Padding="20,0"
+                Background="White"
+                BorderBrush="#DFE4EA"
+                BorderThickness="0,1,0,0">
+            <TextBlock x:Name="WordCountText"
+                       VerticalAlignment="Center"
+                       Foreground="#475467"
+                       FontSize="12"
+                       Text="字数：0"
+                       AutomationProperties.Name="正文字数" />
         </Border>
     </Grid>
 </UserControl>

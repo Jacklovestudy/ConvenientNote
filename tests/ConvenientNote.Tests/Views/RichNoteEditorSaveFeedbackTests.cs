@@ -55,6 +55,76 @@ public sealed class RichNoteEditorSaveFeedbackTests
         });
     }
 
+    [Fact]
+    public void SaveFeedbackIsAnchoredAtTopOfEditor()
+    {
+        RunSta(() =>
+        {
+            var control = new RichNoteEditorControl();
+            var feedback = Assert.IsType<Border>(control.FindName("SaveFeedbackBorder"));
+
+            Assert.Equal(VerticalAlignment.Top, feedback.VerticalAlignment);
+            Assert.True(feedback.Margin.Top > 0);
+            Assert.Equal(0, feedback.Margin.Bottom);
+        });
+    }
+
+    [Fact]
+    public void ReturnButtonIsAvailableInHeaderActions()
+    {
+        RunSta(() =>
+        {
+            var control = new RichNoteEditorControl();
+            var actions = Assert.IsType<StackPanel>(control.FindName("HeaderActionsPanel"));
+            var button = Assert.IsType<Button>(control.FindName("HeaderBackButton"));
+
+            Assert.Same(actions, button.Parent);
+            Assert.Equal(0, actions.Children.IndexOf(button));
+            Assert.Equal("返回笔记墙", AutomationProperties.GetName(button));
+        });
+    }
+
+    [Fact]
+    public void WordCountIsShownInBottomStatusBar()
+    {
+        RunSta(() =>
+        {
+            var control = new RichNoteEditorControl();
+            var statusBar = Assert.IsType<Border>(control.FindName("EditorStatusBar"));
+            var wordCount = Assert.IsType<TextBlock>(control.FindName("WordCountText"));
+
+            Assert.Equal(3, Grid.GetRow(statusBar));
+            Assert.Equal("字数：0", wordCount.Text);
+        });
+    }
+
+    [Fact]
+    public void EditorContentStartsAtTopLeft()
+    {
+        RunSta(() =>
+        {
+            var control = new RichNoteEditorControl();
+            var editor = Assert.IsType<RichTextBox>(control.FindName("Editor"));
+
+            Assert.Equal(VerticalAlignment.Top, editor.VerticalContentAlignment);
+            Assert.Equal(HorizontalAlignment.Stretch, editor.HorizontalContentAlignment);
+        });
+    }
+
+    [Fact]
+    public void LineSpacingCanBeSelectedOrTypedInToolbar()
+    {
+        RunSta(() =>
+        {
+            var control = new RichNoteEditorControl();
+            var lineSpacing = Assert.IsType<ComboBox>(control.FindName("LineSpacingComboBox"));
+
+            Assert.True(lineSpacing.IsEditable);
+            Assert.Contains(lineSpacing.Items.OfType<ComboBoxItem>(), item => Equals(item.Tag, "1.5"));
+            Assert.Equal("行距", AutomationProperties.GetName(lineSpacing));
+        });
+    }
+
     private static Window CreateHost(RichNoteEditorControl control)
     {
         return new Window

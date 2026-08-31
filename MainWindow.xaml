@@ -144,12 +144,15 @@
                                  Padding="10,7" />
 
                         <ListBox Grid.Row="2"
+                                 x:Name="NavigationListBox"
                                  ItemsSource="{Binding NavigationItems}"
                                  SelectedItem="{Binding ActiveNavigationItem, Mode=TwoWay}"
+                                 PreviewKeyDown="NavigationListBox_PreviewKeyDown"
                                  BorderThickness="0"
                                  Background="Transparent">
                             <ListBox.ItemContainerStyle>
                                 <Style TargetType="{x:Type ListBoxItem}">
+                                    <EventSetter Event="PreviewMouseLeftButtonDown" Handler="NavigationItem_PreviewMouseLeftButtonDown" />
                                     <Setter Property="Padding" Value="0" />
                                     <Setter Property="Margin" Value="0,2" />
                                     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
@@ -193,12 +196,12 @@
                             <Button Content="已达成"
                                     Margin="0,0,8,0"
                                     Padding="8,6"
-                                    Command="{Binding SelectNavigationCommand}"
-                                    CommandParameter="{x:Static local:NavigationSection.Completed}" />
+                                    Tag="{x:Static local:NavigationSection.Completed}"
+                                    Click="NavigationShortcut_Click" />
                             <Button Content="回收站"
                                     Padding="8,6"
-                                    Command="{Binding SelectNavigationCommand}"
-                                    CommandParameter="{x:Static local:NavigationSection.Trash}" />
+                                    Tag="{x:Static local:NavigationSection.Trash}"
+                                    Click="NavigationShortcut_Click" />
                         </StackPanel>
                     </Grid>
                 </Border>

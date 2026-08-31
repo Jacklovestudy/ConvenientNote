@@ -1,4 +1,5 @@
 using System.IO;
+using System.Globalization;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Automation.Peers;
@@ -10,6 +11,7 @@ using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using ConvenientNote.ViewModels;
+using ConvenientNote.Services;
 using MaterialDesignThemes.Wpf;
 using Microsoft.Win32;
 
@@ -23,6 +25,7 @@ public partial class RichNoteEditorControl : UserControl
     private NotesViewModel? _viewModel;
     private bool _isLoading;
     private bool _isUpdatingFontSize;
+    private bool _isUpdatingLineSpacing;
     private int _colorIndex;
     private int _saveFeedbackVersion;
     private static readonly Brush[] TextColors =
@@ -70,19 +73,46 @@ public partial class RichNoteEditorControl : UserControl
         _isLoading = true;
         _saveTimer.Stop();
         Editor.Document = _viewModel.DocumentService.Load(note.RichContent, note.Content);
+        UpdateWordCount();
         TagsTextBox.Text = string.Join(", ", note.Tags);
         NotebookComboBox.SelectedItem = _viewModel.AvailableNotebooks.FirstOrDefault(option => option.Id == note.NotebookId);
+        PositionCaretForEmptyDocument();
         _isLoading = false;
         Editor.Focus();
     }
 
     private void EditorContentChanged(object sender, TextChangedEventArgs e)
     {
+        UpdateWordCount();
         if (_isLoading || _viewModel?.SelectedNote is null)
         {
             return;
         }
         ScheduleSave();
+    }
+
+    private void UpdateWordCount()
+    {
+        if (WordCountText is null)
+        {
+            return;
+        }
+
+        var text = new TextRange(Editor.Document.ContentStart, Editor.Document.ContentEnd).Text;
+        WordCountText.Text = $"字数：{DocumentWordCounter.Count(text)}";
+    }
+
+    private void PositionCaretForEmptyDocument()
+    {
+        var text = new TextRange(Editor.Document.ContentStart, Editor.Document.ContentEnd).Text;
+        if (!string.IsNullOrWhiteSpace(text))
+        {
+            return;
+        }
+
+        Editor.CaretPosition = Editor.Document.ContentStart;
+        Editor.Selection.Select(Editor.Document.ContentStart, Editor.Document.ContentStart);
+        Editor.ScrollToHome();
     }
 
     private void TagsTextBox_TextChanged(object sender, TextChangedEventArgs e)
@@ -209,16 +239,27 @@ public partial class RichNoteEditorControl : UserControl
 
     private async void BackButton_Click(object sender, RoutedEventArgs e)
     {
-        await SaveNowAsync();
+        await ReturnToWallAsync();
+    }
+
+    internal async Task<bool> ReturnToWallAsync()
+    {
+        var saved = await SaveNowAsync();
+        if (!saved)
+        {
+            ShowSaveFeedback(false);
+            return false;
+        }
+
         _viewModel?.CloseEditorCommand.Execute();
+        return true;
     }
 
     private async void Editor_PreviewKeyDown(object sender, KeyEventArgs e)
     {
         if (e.Key == Key.Escape)
         {
-            await SaveNowAsync();
-            _viewModel?.CloseEditorCommand.Execute();
+            await ReturnToWallAsync();
             e.Handled = true;
         }
         else if (e.Key == Key.V && Keyboard.Modifiers.HasFlag(ModifierKeys.Control) && Clipboard.ContainsImage())
@@ -234,7 +275,16 @@ public partial class RichNoteEditorControl : UserControl
         {
             return;
         }
-        Editor.Selection.ApplyPropertyValue(TextElement.FontSizeProperty, size);
+        Editor.BeginChange();
+        try
+        {
+            Editor.Selection.ApplyPropertyValue(TextElement.FontSizeProperty, size);
+            RefreshSelectedParagraphLineHeights();
+        }
+        finally
+        {
+            Editor.EndChange();
+        }
         RefreshFontSizeSelection();
         Editor.Focus();
     }
@@ -247,13 +297,152 @@ public partial class RichNoteEditorControl : UserControl
             return;
         }
 
-        Editor.Selection.ApplyPropertyValue(TextElement.FontSizeProperty, size);
+        Editor.BeginChange();
+        try
+        {
+            Editor.Selection.ApplyPropertyValue(TextElement.FontSizeProperty, size);
+            RefreshSelectedParagraphLineHeights();
+        }
+        finally
+        {
+            Editor.EndChange();
+        }
         Editor.Focus();
+    }
+
+    private void LineSpacingComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!IsLoaded || _isUpdatingLineSpacing || LineSpacingComboBox.SelectedItem is not ComboBoxItem item)
+        {
+            return;
+        }
+
+        TryApplyLineSpacing(item.Tag?.ToString());
+    }
+
+    private void LineSpacingComboBox_LostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e) =>
+        TryApplyLineSpacing(LineSpacingComboBox.Text);
+
+    private void LineSpacingComboBox_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter)
+        {
+            return;
+        }
+
+        TryApplyLineSpacing(LineSpacingComboBox.Text);
+        Editor.Focus();
+        e.Handled = true;
+    }
+
+    private bool TryApplyLineSpacing(string? text)
+    {
+        if (_isUpdatingLineSpacing || string.IsNullOrWhiteSpace(text))
+        {
+            return false;
+        }
+
+        if (!ParagraphLineSpacing.TryParseRatio(text, out var ratio))
+        {
+            RefreshLineSpacingSelection();
+            return false;
+        }
+
+        foreach (var paragraph in GetSelectedParagraphs())
+        {
+            ParagraphLineSpacing.Apply(paragraph, ratio);
+        }
+
+        ScheduleSave();
+        RefreshLineSpacingSelection();
+        Editor.Focus();
+        return true;
     }
 
     private void Editor_SelectionChanged(object sender, RoutedEventArgs e)
     {
         RefreshFontSizeSelection();
+        RefreshLineSpacingSelection();
+    }
+
+    private void RefreshLineSpacingSelection()
+    {
+        if (!IsLoaded || _isUpdatingLineSpacing)
+        {
+            return;
+        }
+
+        var ratios = GetSelectedParagraphs()
+            .Select(ParagraphLineSpacing.GetRatio)
+            .DistinctBy(static ratio => Math.Round(ratio, 3))
+            .Take(2)
+            .ToList();
+        _isUpdatingLineSpacing = true;
+        try
+        {
+            if (ratios.Count != 1)
+            {
+                LineSpacingComboBox.SelectedItem = null;
+                LineSpacingComboBox.Text = string.Empty;
+                return;
+            }
+
+            var ratio = ratios[0];
+            var item = LineSpacingComboBox.Items.OfType<ComboBoxItem>().FirstOrDefault(option =>
+                ParagraphLineSpacing.TryParseRatio(option.Tag?.ToString(), out var value)
+                && Math.Abs(value - ratio) < 0.001);
+            LineSpacingComboBox.SelectedItem = item;
+            LineSpacingComboBox.Text = item?.Content?.ToString() ?? ratio.ToString("0.##", CultureInfo.InvariantCulture);
+        }
+        finally
+        {
+            _isUpdatingLineSpacing = false;
+        }
+    }
+
+    private void RefreshSelectedParagraphLineHeights()
+    {
+        foreach (var paragraph in GetSelectedParagraphs())
+        {
+            ParagraphLineSpacing.Refresh(paragraph);
+        }
+    }
+
+    private IReadOnlyList<Paragraph> GetSelectedParagraphs()
+    {
+        var start = Editor.Selection.Start;
+        var end = Editor.Selection.End;
+        return EnumerateParagraphs(Editor.Document.Blocks)
+            .Where(paragraph => paragraph.ContentEnd.CompareTo(start) >= 0 && paragraph.ContentStart.CompareTo(end) <= 0)
+            .ToList();
+    }
+
+    private static IEnumerable<Paragraph> EnumerateParagraphs(BlockCollection blocks)
+    {
+        foreach (var block in blocks)
+        {
+            switch (block)
+            {
+                case Paragraph paragraph:
+                    yield return paragraph;
+                    break;
+                case Section section:
+                    foreach (var child in EnumerateParagraphs(section.Blocks))
+                    {
+                        yield return child;
+                    }
+                    break;
+                case List list:
+                    foreach (var item in list.ListItems)
+                    {
+                        foreach (var child in EnumerateParagraphs(item.Blocks))
+                        {
+                            yield return child;
+                        }
+                    }
+                    break;
+            }
+        }
     }
 
     private void RefreshFontSizeSelection()

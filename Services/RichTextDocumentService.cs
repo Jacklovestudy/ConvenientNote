@@ -93,6 +93,7 @@ public sealed class RichTextDocumentService
                 Kind = "paragraph",
                 Alignment = paragraph.TextAlignment.ToString(),
                 FontSize = paragraph.FontSize,
+                LineSpacing = ParagraphLineSpacing.GetRatio(paragraph),
                 Inlines = paragraph.Inlines.SelectMany(SerializeInline).ToList()
             };
         }
@@ -102,6 +103,12 @@ public sealed class RichTextDocumentService
             return new BlockModel
             {
                 Kind = list.MarkerStyle == TextMarkerStyle.Decimal ? "numbered-list" : "bullet-list",
+                Items = list.ListItems
+                    .SelectMany(static item => item.Blocks.OfType<Paragraph>())
+                    .Select(SerializeBlock)
+                    .Where(static item => item is not null)
+                    .Cast<BlockModel>()
+                    .ToList(),
                 Inlines = list.ListItems
                     .SelectMany(static item => item.Blocks.OfType<Paragraph>())
                     .SelectMany(static paragraph => paragraph.Inlines.SelectMany(SerializeInline).Append(new InlineModel { Kind = "line-break" }))
@@ -170,6 +177,19 @@ public sealed class RichTextDocumentService
             {
                 MarkerStyle = model.Kind == "numbered-list" ? TextMarkerStyle.Decimal : TextMarkerStyle.Disc
             };
+            if (model.Items.Count > 0)
+            {
+                foreach (var item in model.Items)
+                {
+                    if (DeserializeBlock(item) is Paragraph itemParagraph)
+                    {
+                        list.ListItems.Add(new ListItem(itemParagraph));
+                    }
+                }
+
+                return list;
+            }
+
             var paragraph = new Paragraph();
             foreach (var inline in model.Inlines)
             {
@@ -198,6 +218,10 @@ public sealed class RichTextDocumentService
         foreach (var inline in model.Inlines)
         {
             result.Inlines.Add(DeserializeInline(inline));
+        }
+        if (model.LineSpacing is >= 0.8 and <= 3)
+        {
+            ParagraphLineSpacing.Apply(result, model.LineSpacing.Value);
         }
         return result;
     }
@@ -287,6 +311,8 @@ public sealed class RichTextDocumentService
         public string Kind { get; set; } = "paragraph";
         public string? Alignment { get; set; }
         public double FontSize { get; set; } = 14;
+        public double? LineSpacing { get; set; }
+        public List<BlockModel> Items { get; set; } = new();
         public List<InlineModel> Inlines { get; set; } = new();
     }
 

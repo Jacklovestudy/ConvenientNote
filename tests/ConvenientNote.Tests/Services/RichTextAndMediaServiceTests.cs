@@ -1,4 +1,5 @@
 using System.IO;
+using System.Windows;
 using System.Windows.Documents;
 using ConvenientNote.Domain.Notes;
 using ConvenientNote.Services;
@@ -8,6 +9,24 @@ namespace ConvenientNote.Tests.Services;
 
 public sealed class RichTextAndMediaServiceTests
 {
+    [Theory]
+    [InlineData("1.8", 1.8)]
+    [InlineData("行距 1,5", 1.5)]
+    public void CustomLineSpacingParsesSupportedValues(string text, double expected)
+    {
+        Assert.True(ParagraphLineSpacing.TryParseRatio(text, out var ratio));
+        Assert.Equal(expected, ratio, 3);
+    }
+
+    [Theory]
+    [InlineData("0.5")]
+    [InlineData("3.5")]
+    [InlineData("abc")]
+    public void CustomLineSpacingRejectsUnsupportedValues(string text)
+    {
+        Assert.False(ParagraphLineSpacing.TryParseRatio(text, out _));
+    }
+
     [Fact]
     public void RichTextRoundTripPreservesParagraphAndBoldText()
     {
@@ -47,6 +66,47 @@ public sealed class RichTextAndMediaServiceTests
                 runs,
                 run => Assert.Equal(12, run.FontSize),
                 run => Assert.Equal(24, run.FontSize));
+        });
+    }
+
+    [Fact]
+    public void RichTextRoundTripPreservesParagraphLineSpacing()
+    {
+        RunSta(() =>
+        {
+            var document = new FlowDocument();
+            var paragraph = new Paragraph(new Run("行距测试"));
+            ParagraphLineSpacing.Apply(paragraph, 1.5);
+            document.Blocks.Add(paragraph);
+            var service = new RichTextDocumentService();
+
+            var saved = service.Save(document);
+            var loaded = service.Load(saved.Json, string.Empty);
+            var loadedParagraph = Assert.Single(loaded.Blocks.OfType<Paragraph>());
+
+            Assert.Equal(1.5, ParagraphLineSpacing.GetRatio(loadedParagraph), 3);
+            Assert.Equal(LineStackingStrategy.BlockLineHeight, loadedParagraph.LineStackingStrategy);
+        });
+    }
+
+    [Fact]
+    public void RichTextRoundTripPreservesListItemLineSpacing()
+    {
+        RunSta(() =>
+        {
+            var paragraph = new Paragraph(new Run("列表行距"));
+            ParagraphLineSpacing.Apply(paragraph, 2);
+            var list = new System.Windows.Documents.List { MarkerStyle = TextMarkerStyle.Disc };
+            list.ListItems.Add(new ListItem(paragraph));
+            var document = new FlowDocument(list);
+            var service = new RichTextDocumentService();
+
+            var saved = service.Save(document);
+            var loaded = service.Load(saved.Json, string.Empty);
+            var loadedList = Assert.IsType<System.Windows.Documents.List>(Assert.Single(loaded.Blocks));
+            var loadedParagraph = Assert.IsType<Paragraph>(Assert.Single(Assert.Single(loadedList.ListItems).Blocks));
+
+            Assert.Equal(2, ParagraphLineSpacing.GetRatio(loadedParagraph), 3);
         });
     }
 
