@@ -19,7 +19,8 @@
         WindowStyle="None"
         ResizeMode="CanResize"
         UseLayoutRounding="True"
-        Loaded="MainWindow_Loaded">
+        Loaded="MainWindow_Loaded"
+        Closing="MainWindow_Closing">
     <shell:WindowChrome.WindowChrome>
         <shell:WindowChrome CaptionHeight="48"
                             CornerRadius="0"
@@ -60,34 +61,27 @@
                 <StackPanel Grid.Column="2"
                             Orientation="Horizontal"
                             shell:WindowChrome.IsHitTestVisibleInChrome="True">
-                    <Button Width="46"
-                            Height="48"
-                            Padding="0"
-                            Background="Transparent"
-                            BorderThickness="0"
-                            Foreground="White"
+                    <Button x:Name="MinimizeButton"
+                            Style="{StaticResource TitleBarButtonStyle}"
                             Click="MinimizeButton_Click">
-                        <TextBlock Text="-" FontSize="18" />
+                        <materialDesign:PackIcon Kind="WindowMinimize"
+                                                 Width="16"
+                                                 Height="16" />
                     </Button>
-                    <Button Width="46"
-                            Height="48"
-                            Padding="0"
-                            Background="Transparent"
-                            BorderThickness="0"
-                            Foreground="White"
+                    <Button x:Name="MaximizeRestoreButton"
+                            Style="{StaticResource TitleBarButtonStyle}"
                             Click="MaximizeRestoreButton_Click">
-                        <TextBlock x:Name="MaximizeRestoreText"
-                                   Text="□"
-                                   FontSize="13" />
+                        <materialDesign:PackIcon x:Name="MaximizeRestoreIcon"
+                                                 Kind="WindowMaximize"
+                                                 Width="16"
+                                                 Height="16" />
                     </Button>
-                    <Button Width="46"
-                            Height="48"
-                            Padding="0"
-                            Background="Transparent"
-                            BorderThickness="0"
-                            Foreground="White"
+                    <Button x:Name="CloseButton"
+                            Style="{StaticResource TitleBarCloseButtonStyle}"
                             Click="CloseButton_Click">
-                        <TextBlock Text="×" FontSize="18" />
+                        <materialDesign:PackIcon Kind="Close"
+                                                 Width="16"
+                                                 Height="16" />
                     </Button>
                 </StackPanel>
             </Grid>
@@ -211,7 +205,7 @@
             </materialDesign:DrawerHost.LeftDrawerContent>
 
             <Grid>
-                <ContentControl prism:RegionManager.RegionName="MainRegion" />
+                <ContentControl x:Name="MainRegionContent" prism:RegionManager.RegionName="MainRegion" />
 
                 <Button Width="42"
                         Height="42"
@@ -225,6 +219,7 @@
                         BorderBrush="#3F51B5"
                         Foreground="White"
                         Command="{Binding ToggleNavigationCommand}"
+                        AutomationProperties.Name="打开导航"
                         ToolTip="打开导航">
                     <materialDesign:PackIcon Kind="Menu"
                                              Width="24"

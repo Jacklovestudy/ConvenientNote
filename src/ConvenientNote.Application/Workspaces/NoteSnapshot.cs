@@ -14,4 +14,12 @@ public sealed record NoteSnapshot(
     double Height,
     string Color,
     int ZIndex,
-    bool IsCompleted);
+    bool IsCompleted,
+    string RichContent,
+    NotebookId? NotebookId,
+    IReadOnlyList<string> Tags,
+    bool IsPinned,
+    bool IsFavorite,
+    bool IsDeleted,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset UpdatedAt);

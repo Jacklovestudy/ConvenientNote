@@ -174,6 +174,82 @@ public sealed class WorkspaceApplicationService
         await _workspaceRepository.SaveAsync(workspace, cancellationToken);
     }
 
+    public async Task UpdateRichNoteAsync(
+        WorkspaceId workspaceId,
+        NoteId noteId,
+        string richContent,
+        string plainText,
+        CancellationToken cancellationToken = default)
+    {
+        var workspace = await GetRequiredWorkspaceAsync(workspaceId, cancellationToken);
+        workspace.UpdateRichNote(noteId, richContent, plainText);
+        await _workspaceRepository.SaveAsync(workspace, cancellationToken);
+    }
+
+    public async Task SetNoteNotebookAsync(
+        WorkspaceId workspaceId,
+        NoteId noteId,
+        NotebookId? notebookId,
+        CancellationToken cancellationToken = default)
+    {
+        var workspace = await GetRequiredWorkspaceAsync(workspaceId, cancellationToken);
+        workspace.SetNoteNotebook(noteId, notebookId);
+        await _workspaceRepository.SaveAsync(workspace, cancellationToken);
+    }
+
+    public async Task SetNoteTagsAsync(
+        WorkspaceId workspaceId,
+        NoteId noteId,
+        IEnumerable<string> tags,
+        CancellationToken cancellationToken = default)
+    {
+        var workspace = await GetRequiredWorkspaceAsync(workspaceId, cancellationToken);
+        workspace.SetNoteTags(noteId, tags);
+        await _workspaceRepository.SaveAsync(workspace, cancellationToken);
+    }
+
+    public async Task SetNotePinnedAsync(
+        WorkspaceId workspaceId,
+        NoteId noteId,
+        bool isPinned,
+        CancellationToken cancellationToken = default)
+    {
+        var workspace = await GetRequiredWorkspaceAsync(workspaceId, cancellationToken);
+        workspace.SetNotePinned(noteId, isPinned);
+        await _workspaceRepository.SaveAsync(workspace, cancellationToken);
+    }
+
+    public async Task SetNoteFavoriteAsync(
+        WorkspaceId workspaceId,
+        NoteId noteId,
+        bool isFavorite,
+        CancellationToken cancellationToken = default)
+    {
+        var workspace = await GetRequiredWorkspaceAsync(workspaceId, cancellationToken);
+        workspace.SetNoteFavorite(noteId, isFavorite);
+        await _workspaceRepository.SaveAsync(workspace, cancellationToken);
+    }
+
+    public async Task MoveNoteToTrashAsync(
+        WorkspaceId workspaceId,
+        NoteId noteId,
+        CancellationToken cancellationToken = default)
+    {
+        var workspace = await GetRequiredWorkspaceAsync(workspaceId, cancellationToken);
+        workspace.MoveNoteToTrash(noteId);
+        await _workspaceRepository.SaveAsync(workspace, cancellationToken);
+    }
+
+    public async Task RestoreNoteAsync(
+        WorkspaceId workspaceId,
+        NoteId noteId,
+        CancellationToken cancellationToken = default)
+    {
+        var workspace = await GetRequiredWorkspaceAsync(workspaceId, cancellationToken);
+        workspace.RestoreNote(noteId);
+        await _workspaceRepository.SaveAsync(workspace, cancellationToken);
+    }
+
     public async Task DeleteNoteAsync(
         WorkspaceId workspaceId,
         NoteId noteId,
@@ -217,6 +293,14 @@ public sealed class WorkspaceApplicationService
             note.Size.Height,
             note.Color,
             note.ZIndex,
-            note.IsCompleted);
+            note.IsCompleted,
+            note.RichContent,
+            note.NotebookId,
+            note.Tags,
+            note.IsPinned,
+            note.IsFavorite,
+            note.IsDeleted,
+            note.CreatedAt,
+            note.UpdatedAt);
     }
 }

@@ -4,6 +4,7 @@ using ConvenientNote.Domain.Notes;
 using ConvenientNote.Domain.Workspaces;
 using ConvenientNote.Infrastructure.Persistence.Entities;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 
 namespace ConvenientNote.Infrastructure.Persistence;
 
@@ -159,8 +160,51 @@ public sealed class SqliteWorkspaceRepository : IWorkspaceRepository
         await context.Database.EnsureCreatedAsync(cancellationToken);
         await EnsureNoteBoardKeyColumnAsync(context, cancellationToken);
         await EnsureNotePriorityColumnAsync(context, cancellationToken);
+        await EnsureRichNoteColumnsAsync(context, cancellationToken);
         await TryImportFromJsonAsync(context, cancellationToken);
         _databaseInitialized = true;
+    }
+
+    private static async Task EnsureRichNoteColumnsAsync(
+        ConvenientNoteDbContext context,
+        CancellationToken cancellationToken)
+    {
+        var columns = await GetNoteColumnsAsync(context, cancellationToken);
+        var commands = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["RichContent"] = "ALTER TABLE \"Notes\" ADD COLUMN \"RichContent\" TEXT NOT NULL DEFAULT '';",
+            ["NotebookId"] = "ALTER TABLE \"Notes\" ADD COLUMN \"NotebookId\" TEXT NULL;",
+            ["TagsJson"] = "ALTER TABLE \"Notes\" ADD COLUMN \"TagsJson\" TEXT NOT NULL DEFAULT '[]';",
+            ["IsPinned"] = "ALTER TABLE \"Notes\" ADD COLUMN \"IsPinned\" INTEGER NOT NULL DEFAULT 0;",
+            ["IsFavorite"] = "ALTER TABLE \"Notes\" ADD COLUMN \"IsFavorite\" INTEGER NOT NULL DEFAULT 0;",
+            ["IsDeleted"] = "ALTER TABLE \"Notes\" ADD COLUMN \"IsDeleted\" INTEGER NOT NULL DEFAULT 0;"
+        };
+
+        foreach (var (name, command) in commands)
+        {
+            if (!columns.Contains(name))
+            {
+                await context.Database.ExecuteSqlRawAsync(command, cancellationToken);
+            }
+        }
+    }
+
+    private static async Task<HashSet<string>> GetNoteColumnsAsync(
+        ConvenientNoteDbContext context,
+        CancellationToken cancellationToken)
+    {
+        var connection = context.Database.GetDbConnection();
+        await context.Database.OpenConnectionAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = "PRAGMA table_info(\"Notes\");";
+        var columns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            columns.Add(reader.GetString(1));
+        }
+
+        return columns;
     }
 
     private static async Task EnsureNoteBoardKeyColumnAsync(
@@ -270,7 +314,13 @@ public sealed class SqliteWorkspaceRepository : IWorkspaceRepository
             note.ZIndex,
             note.IsCompleted,
             note.CreatedAt,
-            note.UpdatedAt));
+            note.UpdatedAt,
+            note.RichContent,
+            note.NotebookId is { } notebookId ? new NotebookId(notebookId) : null,
+            DeserializeTags(note.TagsJson),
+            note.IsPinned,
+            note.IsFavorite,
+            note.IsDeleted));
 
         return new Workspace(
             new WorkspaceId(entity.Id),
@@ -316,6 +366,12 @@ public sealed class SqliteWorkspaceRepository : IWorkspaceRepository
         entity.Priority = note.Priority;
         entity.Title = note.Title;
         entity.Content = note.Content;
+        entity.RichContent = note.RichContent;
+        entity.NotebookId = note.NotebookId?.Value;
+        entity.TagsJson = JsonSerializer.Serialize(note.Tags);
+        entity.IsPinned = note.IsPinned;
+        entity.IsFavorite = note.IsFavorite;
+        entity.IsDeleted = note.IsDeleted;
         entity.X = note.Position.X;
         entity.Y = note.Position.Y;
         entity.Width = note.Size.Width;
@@ -325,5 +381,22 @@ public sealed class SqliteWorkspaceRepository : IWorkspaceRepository
         entity.IsCompleted = note.IsCompleted;
         entity.CreatedAt = note.CreatedAt;
         entity.UpdatedAt = note.UpdatedAt;
+    }
+
+    private static IReadOnlyList<string> DeserializeTags(string? tagsJson)
+    {
+        if (string.IsNullOrWhiteSpace(tagsJson))
+        {
+            return [];
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<List<string>>(tagsJson) ?? [];
+        }
+        catch (JsonException)
+        {
+            return [];
+        }
     }
 }

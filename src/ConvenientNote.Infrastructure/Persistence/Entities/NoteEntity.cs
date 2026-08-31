@@ -14,6 +14,18 @@ public sealed class NoteEntity
 
     public string Content { get; set; } = string.Empty;
 
+    public string RichContent { get; set; } = string.Empty;
+
+    public Guid? NotebookId { get; set; }
+
+    public string TagsJson { get; set; } = "[]";
+
+    public bool IsPinned { get; set; }
+
+    public bool IsFavorite { get; set; }
+
+    public bool IsDeleted { get; set; }
+
     public double X { get; set; }
 
     public double Y { get; set; }

@@ -12,6 +12,7 @@ public sealed class Note
         "green",
         "blue"
     };
+    private List<string> _tags;
 
     public Note(
         NoteId id,
@@ -25,7 +26,13 @@ public sealed class Note
         int zIndex,
         bool isCompleted,
         DateTimeOffset createdAt,
-        DateTimeOffset updatedAt)
+        DateTimeOffset updatedAt,
+        string richContent = "",
+        NotebookId? notebookId = null,
+        IEnumerable<string>? tags = null,
+        bool isPinned = false,
+        bool isFavorite = false,
+        bool isDeleted = false)
     {
         Id = id;
         BoardKey = NormalizeBoardKey(boardKey);
@@ -37,6 +44,12 @@ public sealed class Note
         Color = NormalizeColor(color);
         ZIndex = zIndex;
         IsCompleted = isCompleted;
+        RichContent = richContent ?? string.Empty;
+        NotebookId = notebookId;
+        _tags = NormalizeTags(tags ?? []);
+        IsPinned = isPinned;
+        IsFavorite = isFavorite;
+        IsDeleted = isDeleted;
         CreatedAt = createdAt;
         UpdatedAt = updatedAt;
     }
@@ -60,6 +73,18 @@ public sealed class Note
     public int ZIndex { get; private set; }
 
     public bool IsCompleted { get; private set; }
+
+    public string RichContent { get; private set; }
+
+    public NotebookId? NotebookId { get; private set; }
+
+    public IReadOnlyList<string> Tags => _tags.AsReadOnly();
+
+    public bool IsPinned { get; private set; }
+
+    public bool IsFavorite { get; private set; }
+
+    public bool IsDeleted { get; private set; }
 
     public DateTimeOffset CreatedAt { get; }
 
@@ -100,6 +125,49 @@ public sealed class Note
     public void UpdateContent(string content)
     {
         Content = content ?? string.Empty;
+        Touch();
+    }
+
+    public void UpdateRichContent(string richContent, string plainText)
+    {
+        RichContent = richContent ?? string.Empty;
+        Content = plainText ?? string.Empty;
+        Touch();
+    }
+
+    public void SetNotebook(NotebookId? notebookId)
+    {
+        NotebookId = notebookId;
+        Touch();
+    }
+
+    public void SetTags(IEnumerable<string> tags)
+    {
+        _tags = NormalizeTags(tags ?? []);
+        Touch();
+    }
+
+    public void SetPinned(bool isPinned)
+    {
+        IsPinned = isPinned;
+        Touch();
+    }
+
+    public void SetFavorite(bool isFavorite)
+    {
+        IsFavorite = isFavorite;
+        Touch();
+    }
+
+    public void MoveToTrash()
+    {
+        IsDeleted = true;
+        Touch();
+    }
+
+    public void Restore()
+    {
+        IsDeleted = false;
         Touch();
     }
 
@@ -178,6 +246,23 @@ public sealed class Note
     private static string NormalizeColor(string color)
     {
         return string.IsNullOrWhiteSpace(color) ? "#FFF8B8" : color.Trim();
+    }
+
+    private static List<string> NormalizeTags(IEnumerable<string> tags)
+    {
+        var normalized = tags
+            .Select(static tag => tag?.Trim() ?? string.Empty)
+            .Where(static tag => tag.Length > 0)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Take(20)
+            .ToList();
+
+        if (normalized.Any(static tag => tag.Length > 24))
+        {
+            throw new DomainException("Tag name cannot exceed 24 characters.");
+        }
+
+        return normalized;
     }
 
     private void Touch()

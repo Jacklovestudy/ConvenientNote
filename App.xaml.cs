@@ -24,8 +24,10 @@ namespace ConvenientNote
             containerRegistry.RegisterSingleton<IWorkspaceRepository, SqliteWorkspaceRepository>();
             containerRegistry.RegisterSingleton<WorkspaceApplicationService>();
             containerRegistry.RegisterSingleton<OpenMeteoWeatherService>();
+            containerRegistry.RegisterSingleton<NoteMediaService>();
+            containerRegistry.RegisterSingleton<RichTextDocumentService>();
             containerRegistry.RegisterForNavigation<DayTodoView>();
-            containerRegistry.RegisterForNavigation<TestingTodoView>();
+            containerRegistry.RegisterForNavigation<NotesView>();
             containerRegistry.RegisterForNavigation<ScheduleView>();
             containerRegistry.RegisterForNavigation<InboxView>();
             containerRegistry.RegisterForNavigation<ReviewView>();

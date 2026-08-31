@@ -37,7 +37,7 @@ namespace ConvenientNote
             });
 
             NavigationItems.Add(new NavigationItemViewModel(NavigationSection.DayTodo, nameof(DayTodoView), "Day Todo", "今天要处理的待办", PackIconKind.CalendarToday));
-            NavigationItems.Add(new NavigationItemViewModel(NavigationSection.Testing, nameof(TestingTodoView), "待测试", "验证队列", PackIconKind.ClipboardCheckOutline));
+            NavigationItems.Add(new NavigationItemViewModel(NavigationSection.Notes, nameof(NotesView), "笔记", "记录想法与资料", PackIconKind.NotebookEditOutline));
             NavigationItems.Add(new NavigationItemViewModel(NavigationSection.Schedule, nameof(ScheduleView), "日程概览", "按日期查看", PackIconKind.CalendarMonth));
             NavigationItems.Add(new NavigationItemViewModel(NavigationSection.Inbox, nameof(InboxView), "待办箱", "未完成事项", PackIconKind.Inbox));
             NavigationItems.Add(new NavigationItemViewModel(NavigationSection.Review, nameof(ReviewView), "数据复盘", "完成情况", PackIconKind.ChartLine));

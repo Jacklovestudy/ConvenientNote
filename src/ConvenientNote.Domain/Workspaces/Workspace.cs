@@ -108,6 +108,48 @@ public sealed class Workspace
         Touch();
     }
 
+    public void UpdateRichNote(NoteId noteId, string richContent, string plainText)
+    {
+        GetRequiredNote(noteId).UpdateRichContent(richContent, plainText);
+        Touch();
+    }
+
+    public void SetNoteNotebook(NoteId noteId, NotebookId? notebookId)
+    {
+        GetRequiredNote(noteId).SetNotebook(notebookId);
+        Touch();
+    }
+
+    public void SetNoteTags(NoteId noteId, IEnumerable<string> tags)
+    {
+        GetRequiredNote(noteId).SetTags(tags);
+        Touch();
+    }
+
+    public void SetNotePinned(NoteId noteId, bool isPinned)
+    {
+        GetRequiredNote(noteId).SetPinned(isPinned);
+        Touch();
+    }
+
+    public void SetNoteFavorite(NoteId noteId, bool isFavorite)
+    {
+        GetRequiredNote(noteId).SetFavorite(isFavorite);
+        Touch();
+    }
+
+    public void MoveNoteToTrash(NoteId noteId)
+    {
+        GetRequiredNote(noteId).MoveToTrash();
+        Touch();
+    }
+
+    public void RestoreNote(NoteId noteId)
+    {
+        GetRequiredNote(noteId).Restore();
+        Touch();
+    }
+
     public void RemoveNote(NoteId noteId)
     {
         var note = GetRequiredNote(noteId);

@@ -43,6 +43,8 @@ public sealed class ConvenientNoteDbContext : DbContext
             note.Property(current => current.Priority).HasMaxLength(16).HasDefaultValue(Note.DefaultPriority).IsRequired();
             note.Property(current => current.Title).HasMaxLength(80).IsRequired();
             note.Property(current => current.Content).IsRequired();
+            note.Property(current => current.RichContent).IsRequired();
+            note.Property(current => current.TagsJson).IsRequired();
             note.Property(current => current.Color).HasMaxLength(32).IsRequired();
             note.Property(current => current.CreatedAt).IsRequired();
             note.Property(current => current.UpdatedAt).IsRequired();
@@ -50,6 +52,8 @@ public sealed class ConvenientNoteDbContext : DbContext
             note.HasIndex(current => current.WorkspaceId);
             note.HasIndex(current => current.BoardKey);
             note.HasIndex(current => current.IsCompleted);
+            note.HasIndex(current => current.IsDeleted);
+            note.HasIndex(current => current.IsPinned);
             note.HasIndex(current => current.ZIndex);
         });
     }

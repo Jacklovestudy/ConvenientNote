@@ -1,4 +1,8 @@
 using System.Windows;
+using System.ComponentModel;
+using ConvenientNote.Views;
+using MaterialDesignThemes.Wpf;
+using Prism.Navigation.Regions;
 
 namespace ConvenientNote
 {
@@ -7,6 +11,7 @@ namespace ConvenientNote
     /// </summary>
     public partial class MainWindow : Window
     {
+        private readonly DeferredWindowCloseCoordinator _closeCoordinator = new();
         public MainWindow()
         {
             InitializeComponent();
@@ -15,7 +20,9 @@ namespace ConvenientNote
         protected override void OnStateChanged(EventArgs e)
         {
             base.OnStateChanged(e);
-            MaximizeRestoreText.Text = WindowState == WindowState.Maximized ? "❐" : "□";
+            MaximizeRestoreIcon.Kind = WindowState == WindowState.Maximized
+                ? PackIconKind.WindowRestore
+                : PackIconKind.WindowMaximize;
         }
 
         private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
@@ -41,6 +48,49 @@ namespace ConvenientNote
         private void CloseButton_Click(object sender, RoutedEventArgs e)
         {
             Close();
+        }
+
+        private async void MainWindow_Closing(object? sender, CancelEventArgs e)
+        {
+            var notesView = FindNotesView();
+            if (_closeCoordinator.CanClose || notesView is null)
+            {
+                return;
+            }
+
+            e.Cancel = true;
+            if (!_closeCoordinator.TryBeginFlush())
+            {
+                return;
+            }
+
+            var saved = false;
+            try
+            {
+                saved = await notesView.FlushAsync();
+            }
+            catch
+            {
+            }
+
+            _closeCoordinator.CompleteFlush(
+                saved,
+                close => _ = Dispatcher.BeginInvoke(close),
+                Close);
+        }
+
+        private NotesView? FindNotesView()
+        {
+            if (MainRegionContent.Content is NotesView activeNotesView)
+            {
+                return activeNotesView;
+            }
+
+            return RegionManager.GetObservableRegion(MainRegionContent)
+                .Value?
+                .Views
+                .OfType<NotesView>()
+                .FirstOrDefault();
         }
     }
 }
