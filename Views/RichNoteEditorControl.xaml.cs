@@ -22,10 +22,13 @@ public partial class RichNoteEditorControl : UserControl
     private readonly DispatcherTimer _saveTimer = new() { Interval = TimeSpan.FromMilliseconds(900) };
     private readonly DispatcherTimer _saveFeedbackTimer = new() { Interval = TimeSpan.FromMilliseconds(1500) };
     private readonly ManualSaveRequestGate _manualSaveRequestGate = new();
+    private readonly WorkspaceReplacementOperationGate _saveOperationGate = new();
     private NotesViewModel? _viewModel;
     private bool _isLoading;
     private bool _isUpdatingFontSize;
     private bool _isUpdatingLineSpacing;
+    private bool _resumePendingSaveAfterReplacementFailure;
+    private bool _saveNeededAfterReplacementFailure;
     private int _colorIndex;
     private int _saveFeedbackVersion;
     private static readonly Brush[] TextColors =
@@ -141,6 +144,12 @@ public partial class RichNoteEditorControl : UserControl
 
     private void ScheduleSave()
     {
+        if (_saveOperationGate.IsPreparing)
+        {
+            _saveNeededAfterReplacementFailure = true;
+            return;
+        }
+
         _saveTimer.Stop();
         _saveTimer.Start();
     }
@@ -153,6 +162,14 @@ public partial class RichNoteEditorControl : UserControl
 
     public async Task<bool> SaveNowAsync()
     {
+        var operation = _saveOperationGate.TryBegin();
+        if (operation is null)
+        {
+            return false;
+        }
+
+        using (operation)
+        {
         if (_isLoading || _viewModel?.SelectedNote is null)
         {
             return true;
@@ -166,6 +183,26 @@ public partial class RichNoteEditorControl : UserControl
         catch
         {
             return false;
+        }
+        }
+    }
+
+    public Task CancelPendingSaveAsync()
+    {
+        _resumePendingSaveAfterReplacementFailure = _saveTimer.IsEnabled;
+        _saveTimer.Stop();
+        return _saveOperationGate.PrepareAndDrainAsync();
+    }
+
+    public void ResumePendingSave()
+    {
+        _saveOperationGate.CancelPreparation();
+        var resumeSave = _resumePendingSaveAfterReplacementFailure || _saveNeededAfterReplacementFailure;
+        _resumePendingSaveAfterReplacementFailure = false;
+        _saveNeededAfterReplacementFailure = false;
+        if (resumeSave)
+        {
+            _saveTimer.Start();
         }
     }
 
@@ -530,6 +567,14 @@ public partial class RichNoteEditorControl : UserControl
 
     private async Task InsertImageAsync(string path)
     {
+        var operation = _saveOperationGate.TryBegin();
+        if (operation is null)
+        {
+            return;
+        }
+
+        using (operation)
+        {
         if (_viewModel?.SelectedNote is not { } note)
         {
             return;
@@ -547,6 +592,7 @@ public partial class RichNoteEditorControl : UserControl
         _ = new InlineUIContainer(image, Editor.CaretPosition);
         Editor.CaretPosition = image.Parent is InlineUIContainer container ? container.ElementEnd : Editor.CaretPosition;
         ScheduleSave();
+        }
     }
 
     private static bool IsSupportedImage(string path)

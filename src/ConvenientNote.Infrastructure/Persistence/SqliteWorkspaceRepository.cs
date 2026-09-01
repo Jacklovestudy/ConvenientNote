@@ -124,6 +124,19 @@ public sealed class SqliteWorkspaceRepository : IWorkspaceRepository
         await context.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task ReplaceAllAsync(
+        Workspace workspace,
+        CancellationToken cancellationToken = default)
+    {
+        await using var context = await CreateInitializedContextAsync(cancellationToken);
+        await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
+
+        context.Workspaces.RemoveRange(context.Workspaces);
+        context.Workspaces.Add(ToEntity(workspace));
+        await context.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+    }
+
     private async Task<ConvenientNoteDbContext> CreateInitializedContextAsync(
         CancellationToken cancellationToken)
     {

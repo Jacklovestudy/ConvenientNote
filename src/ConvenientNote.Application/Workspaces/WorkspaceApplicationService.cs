@@ -49,6 +49,15 @@ public sealed class WorkspaceApplicationService
         return ToSnapshot(workspace);
     }
 
+    public async Task<WorkspaceSnapshot> ReplaceAllAsync(
+        Workspace workspace,
+        CancellationToken cancellationToken = default)
+    {
+        await _workspaceRepository.ReplaceAllAsync(workspace, cancellationToken);
+
+        return ToSnapshot(workspace);
+    }
+
     public async Task<WorkspaceSnapshot> GetWorkspaceAsync(
         WorkspaceId workspaceId,
         CancellationToken cancellationToken = default)
@@ -276,7 +285,12 @@ public sealed class WorkspaceApplicationService
             .Select(ToSnapshot)
             .ToList();
 
-        return new WorkspaceSnapshot(workspace.Id, workspace.Name, notes);
+        return new WorkspaceSnapshot(
+            workspace.Id,
+            workspace.Name,
+            workspace.CreatedAt,
+            workspace.UpdatedAt,
+            notes);
     }
 
     private static NoteSnapshot ToSnapshot(Note note)

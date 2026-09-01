@@ -102,6 +102,21 @@ namespace ConvenientNote
             }
         }
 
+        public async Task ReloadWorkspaceIdentityAsync()
+        {
+            var workspace = await _workspaceApplicationService.GetOrCreateDefaultWorkspaceAsync();
+            WorkspaceName = workspace.Name;
+            Title = $"{workspace.Name} - Convenient Note";
+        }
+
+        public void ReloadActiveNavigation()
+        {
+            if (ActiveNavigationItem is not null)
+            {
+                NavigateTo(ActiveNavigationItem);
+            }
+        }
+
         private void ToggleNavigation()
         {
             IsNavigationExpanded = !IsNavigationExpanded;

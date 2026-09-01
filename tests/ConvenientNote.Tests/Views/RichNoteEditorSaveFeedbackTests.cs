@@ -1,4 +1,5 @@
 using System.Runtime.ExceptionServices;
+using System.Reflection;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
@@ -124,6 +125,57 @@ public sealed class RichNoteEditorSaveFeedbackTests
             Assert.Equal("行距", AutomationProperties.GetName(lineSpacing));
         });
     }
+
+    [Fact]
+    public void PendingAutoSaveResumesAfterPreCommitReplacementFailure()
+    {
+        RunSta(() =>
+        {
+            var control = new RichNoteEditorControl();
+            typeof(RichNoteEditorControl)
+                .GetMethod("ScheduleSave", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .Invoke(control, null);
+
+            Assert.True(GetSaveTimer(control).IsEnabled);
+
+            control.CancelPendingSaveAsync().GetAwaiter().GetResult();
+            Assert.False(GetSaveTimer(control).IsEnabled);
+
+            control.ResumePendingSave();
+            Assert.True(GetSaveTimer(control).IsEnabled);
+        });
+    }
+
+    [Fact]
+    public void SaveRequestedWhilePreparationIsActiveResumesAfterPreCommitReplacementFailure()
+    {
+        RunSta(() =>
+        {
+            var control = new RichNoteEditorControl();
+            var gate = Assert.IsType<WorkspaceReplacementOperationGate>(typeof(RichNoteEditorControl)
+                .GetField("_saveOperationGate", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .GetValue(control));
+            using var acceptedImageOperation = gate.TryBegin();
+            Assert.NotNull(acceptedImageOperation);
+
+            var preparation = control.CancelPendingSaveAsync();
+            Assert.False(preparation.IsCompleted);
+            typeof(RichNoteEditorControl)
+                .GetMethod("ScheduleSave", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .Invoke(control, null);
+
+            acceptedImageOperation.Dispose();
+            preparation.GetAwaiter().GetResult();
+            control.ResumePendingSave();
+
+            Assert.True(GetSaveTimer(control).IsEnabled);
+        });
+    }
+
+    private static DispatcherTimer GetSaveTimer(RichNoteEditorControl control) =>
+        Assert.IsType<DispatcherTimer>(typeof(RichNoteEditorControl)
+            .GetField("_saveTimer", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .GetValue(control));
 
     private static Window CreateHost(RichNoteEditorControl control)
     {

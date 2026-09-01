@@ -189,20 +189,48 @@
                             </ListBox.ItemTemplate>
                         </ListBox>
 
-                        <StackPanel Grid.Row="3"
-                                    Orientation="Horizontal"
-                                    HorizontalAlignment="Stretch"
-                                    Margin="0,14,0,0">
-                            <Button Content="已达成"
-                                    Margin="0,0,8,0"
-                                    Padding="8,6"
-                                    Tag="{x:Static local:NavigationSection.Completed}"
-                                    Click="NavigationShortcut_Click" />
-                            <Button Content="回收站"
-                                    Padding="8,6"
-                                    Tag="{x:Static local:NavigationSection.Trash}"
-                                    Click="NavigationShortcut_Click" />
-                        </StackPanel>
+                        <Grid Grid.Row="3" Margin="0,14,0,0">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <StackPanel x:Name="WorkspaceTransferActionsPanel"
+                                        Orientation="Horizontal"
+                                        HorizontalAlignment="Stretch">
+                                <Button x:Name="ExportWorkspaceButton"
+                                        Width="126"
+                                        MinWidth="0"
+                                        Margin="0,0,8,0"
+                                        Padding="8,6"
+                                        AutomationProperties.Name="导出数据"
+                                        Content="导出数据"
+                                        Click="ExportWorkspaceButton_Click" />
+                                <Button x:Name="ImportWorkspaceButton"
+                                        Width="126"
+                                        MinWidth="0"
+                                        Padding="8,6"
+                                        AutomationProperties.Name="导入数据"
+                                        Content="导入数据"
+                                        Click="ImportWorkspaceButton_Click" />
+                            </StackPanel>
+
+                            <StackPanel x:Name="NavigationShortcutsPanel"
+                                        Grid.Row="1"
+                                        Orientation="Horizontal"
+                                        HorizontalAlignment="Stretch"
+                                        Margin="0,8,0,0">
+                                <Button Content="已达成"
+                                        Margin="0,0,8,0"
+                                        Padding="8,6"
+                                        Tag="{x:Static local:NavigationSection.Completed}"
+                                        Click="NavigationShortcut_Click" />
+                                <Button Content="回收站"
+                                        Padding="8,6"
+                                        Tag="{x:Static local:NavigationSection.Trash}"
+                                        Click="NavigationShortcut_Click" />
+                            </StackPanel>
+                        </Grid>
                     </Grid>
                 </Border>
             </materialDesign:DrawerHost.LeftDrawerContent>

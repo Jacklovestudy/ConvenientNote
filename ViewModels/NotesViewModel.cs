@@ -5,6 +5,7 @@ using ConvenientNote.Application.Workspaces;
 using ConvenientNote.Domain.Notes;
 using ConvenientNote.Domain.Workspaces;
 using ConvenientNote.Services;
+using ConvenientNote.Views;
 using Prism.Commands;
 using Prism.Mvvm;
 using Prism.Navigation.Regions;
@@ -18,6 +19,7 @@ public sealed class NotesViewModel : BindableBase, INavigationAware
     private readonly NoteMediaService _mediaService;
     private readonly List<NoteCardViewModel> _allNotes = new();
     private readonly SemaphoreSlim _saveGate = new(1, 1);
+    private WorkspaceReplacementOperationGate? _workspaceReplacementOperationGate;
     private WorkspaceId? _workspaceId;
     private string _searchText = string.Empty;
     private NoteCardViewModel? _selectedNote;
@@ -138,6 +140,11 @@ public sealed class NotesViewModel : BindableBase, INavigationAware
     public RichTextDocumentService DocumentService => _documentService;
     public NoteMediaService MediaService => _mediaService;
 
+    internal void SetWorkspaceReplacementOperationGate(WorkspaceReplacementOperationGate operationGate) =>
+        _workspaceReplacementOperationGate = operationGate;
+
+    internal bool HasWorkspaceReplacementOperationGate => _workspaceReplacementOperationGate is not null;
+
     public async Task InitializeAsync()
     {
         if (_isInitialized)
@@ -150,6 +157,13 @@ public sealed class NotesViewModel : BindableBase, INavigationAware
 
     public async Task SaveDocumentAsync(FlowDocument document)
     {
+        if (!TryBeginWorkspaceMutation(out var operation))
+        {
+            return;
+        }
+
+        using (operation)
+        {
         if (SelectedNote is not { } note || _workspaceId is not { } workspaceId)
         {
             return;
@@ -177,13 +191,22 @@ public sealed class NotesViewModel : BindableBase, INavigationAware
         {
             _saveGate.Release();
         }
+        }
     }
 
     public async Task MoveNoteAsync(NoteCardViewModel note)
     {
+        if (!TryBeginWorkspaceMutation(out var operation))
+        {
+            return;
+        }
+
+        using (operation)
+        {
         if (_workspaceId is { } workspaceId)
         {
             await _workspaceService.MoveNoteAsync(workspaceId, note.Id, note.X, note.Y);
+        }
         }
     }
 
@@ -205,6 +228,13 @@ public sealed class NotesViewModel : BindableBase, INavigationAware
 
     private async Task AddNoteAsync()
     {
+        if (!TryBeginWorkspaceMutation(out var operation))
+        {
+            return;
+        }
+
+        using (operation)
+        {
         if (_workspaceId is not { } workspaceId)
         {
             await InitializeAsync();
@@ -222,6 +252,7 @@ public sealed class NotesViewModel : BindableBase, INavigationAware
         _allNotes.Add(note);
         RefreshFilteredNotes();
         OpenNote(note);
+        }
     }
 
     private void OpenNote(NoteCardViewModel? note)
@@ -236,27 +267,57 @@ public sealed class NotesViewModel : BindableBase, INavigationAware
 
     private async Task TogglePinnedAsync()
     {
+        if (!TryBeginWorkspaceMutation(out var operation))
+        {
+            return;
+        }
+
+        using (operation)
+        {
         if (SelectedNote is not { } note || _workspaceId is not { } workspaceId) return;
         note.IsPinned = !note.IsPinned;
         await _workspaceService.SetNotePinnedAsync(workspaceId, note.Id, note.IsPinned);
         RefreshFilteredNotes();
+        }
     }
 
     private async Task ToggleFavoriteAsync()
     {
+        if (!TryBeginWorkspaceMutation(out var operation))
+        {
+            return;
+        }
+
+        using (operation)
+        {
         if (SelectedNote is not { } note || _workspaceId is not { } workspaceId) return;
         note.IsFavorite = !note.IsFavorite;
         await _workspaceService.SetNoteFavoriteAsync(workspaceId, note.Id, note.IsFavorite);
+        }
     }
 
     private async Task MoveToTrashAsync()
     {
+        if (!TryBeginWorkspaceMutation(out var operation))
+        {
+            return;
+        }
+
+        using (operation)
+        {
         if (SelectedNote is not { } note || _workspaceId is not { } workspaceId) return;
         await _workspaceService.MoveNoteToTrashAsync(workspaceId, note.Id);
         _allNotes.Remove(note);
         SelectedNote = null;
         IsEditorOpen = false;
         RefreshFilteredNotes();
+        }
+    }
+
+    private bool TryBeginWorkspaceMutation(out IDisposable? operation)
+    {
+        operation = _workspaceReplacementOperationGate?.TryBegin();
+        return _workspaceReplacementOperationGate is null || operation is not null;
     }
 
     private void RefreshFilteredNotes()

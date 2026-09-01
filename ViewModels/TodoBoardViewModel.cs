@@ -5,6 +5,7 @@ using ConvenientNote.Application.Workspaces;
 using ConvenientNote.Domain.Notes;
 using ConvenientNote.Domain.Workspaces;
 using ConvenientNote.Services;
+using ConvenientNote.Views;
 using MaterialDesignThemes.Wpf;
 using Prism.Commands;
 using Prism.Mvvm;
@@ -51,6 +52,7 @@ namespace ConvenientNote.ViewModels
         private bool _isWeatherLoading;
         private bool _hasLoadedWeather;
         private bool _isArrangingTodos;
+        private WorkspaceReplacementOperationGate? _workspaceReplacementOperationGate;
 
         protected TodoBoardViewModel(
             WorkspaceApplicationService workspaceApplicationService,
@@ -185,8 +187,20 @@ namespace ConvenientNote.ViewModels
 
         public DelegateCommand<DateTabViewModel> SelectDateCommand { get; }
 
+        internal void SetWorkspaceReplacementOperationGate(WorkspaceReplacementOperationGate operationGate) =>
+            _workspaceReplacementOperationGate = operationGate;
+
+        internal bool HasWorkspaceReplacementOperationGate => _workspaceReplacementOperationGate is not null;
+
         public async Task CommitTodoTitleAsync(CanvasTodoViewModel todo)
         {
+            if (!TryBeginWorkspaceMutation(out var operation))
+            {
+                return;
+            }
+
+            using (operation)
+            {
             if (_deletingTodoIds.Contains(todo.Id) ||
                 _currentWorkspaceId is not { } workspaceId)
             {
@@ -194,10 +208,18 @@ namespace ConvenientNote.ViewModels
             }
 
             await _workspaceApplicationService.UpdateNoteTitleAsync(workspaceId, todo.Id, todo.Title);
+            }
         }
 
         public async Task CommitTodoContentAsync(CanvasTodoViewModel todo)
         {
+            if (!TryBeginWorkspaceMutation(out var operation))
+            {
+                return;
+            }
+
+            using (operation)
+            {
             if (_deletingTodoIds.Contains(todo.Id) ||
                 _currentWorkspaceId is not { } workspaceId)
             {
@@ -205,20 +227,36 @@ namespace ConvenientNote.ViewModels
             }
 
             await _workspaceApplicationService.UpdateNoteContentAsync(workspaceId, todo.Id, todo.Content);
+            }
         }
 
         public async Task CommitTodoPriorityAsync(CanvasTodoViewModel todo)
         {
+            if (!TryBeginWorkspaceMutation(out var operation))
+            {
+                return;
+            }
+
+            using (operation)
+            {
             if (_currentWorkspaceId is not { } workspaceId)
             {
                 return;
             }
 
             await _workspaceApplicationService.SetNotePriorityAsync(workspaceId, todo.Id, todo.Priority);
+            }
         }
 
         public async Task CommitTodoPositionAsync(CanvasTodoViewModel todo)
         {
+            if (!TryBeginWorkspaceMutation(out var operation))
+            {
+                return;
+            }
+
+            using (operation)
+            {
             if (_currentWorkspaceId is not { } workspaceId)
             {
                 return;
@@ -226,10 +264,18 @@ namespace ConvenientNote.ViewModels
 
             await _workspaceApplicationService.MoveNoteAsync(workspaceId, todo.Id, todo.X, todo.Y);
             RefreshBoardSize();
+            }
         }
 
         public async Task DeleteTodoAsync(CanvasTodoViewModel todo)
         {
+            if (!TryBeginWorkspaceMutation(out var operation))
+            {
+                return;
+            }
+
+            using (operation)
+            {
             if (_currentWorkspaceId is not { } workspaceId ||
                 !_deletingTodoIds.Add(todo.Id))
             {
@@ -248,10 +294,18 @@ namespace ConvenientNote.ViewModels
             }
 
             await LoadWorkspaceAsync();
+            }
         }
 
         public async Task<bool> ArrangeTodosAsync(double viewportWidth)
         {
+            if (!TryBeginWorkspaceMutation(out var operation))
+            {
+                return false;
+            }
+
+            using (operation)
+            {
             if (!CanArrangeTodos || _currentWorkspaceId is not { } workspaceId)
             {
                 return false;
@@ -323,6 +377,7 @@ namespace ConvenientNote.ViewModels
                 _isArrangingTodos = false;
                 RaisePropertyChanged(nameof(CanArrangeTodos));
             }
+            }
         }
 
         public void OnNavigatedTo(NavigationContext navigationContext)
@@ -386,6 +441,13 @@ namespace ConvenientNote.ViewModels
 
         private async Task AddTodoAsync()
         {
+            if (!TryBeginWorkspaceMutation(out var operation))
+            {
+                return;
+            }
+
+            using (operation)
+            {
             if (!CanAddTodo || _currentWorkspaceId is not { } workspaceId)
             {
                 return;
@@ -402,6 +464,7 @@ namespace ConvenientNote.ViewModels
             _allTodoItems.Add(CreateTodoViewModel(note));
             QuickAddTitle = string.Empty;
             RefreshVisibleTodos();
+            }
         }
 
         private async Task RefreshWeatherAsync()
@@ -448,6 +511,13 @@ namespace ConvenientNote.ViewModels
                 note,
                 async todo =>
                 {
+                    if (!TryBeginWorkspaceMutation(out var operation))
+                    {
+                        return;
+                    }
+
+                    using (operation)
+                    {
                     if (_currentWorkspaceId is { } workspaceId)
                     {
                         await _workspaceApplicationService.SetNoteCompletionAsync(
@@ -456,7 +526,14 @@ namespace ConvenientNote.ViewModels
                             todo.IsCompleted);
                         await LoadWorkspaceAsync();
                     }
+                    }
                 });
+        }
+
+        private bool TryBeginWorkspaceMutation(out IDisposable? operation)
+        {
+            operation = _workspaceReplacementOperationGate?.TryBegin();
+            return _workspaceReplacementOperationGate is null || operation is not null;
         }
 
         private void RefreshVisibleTodos()

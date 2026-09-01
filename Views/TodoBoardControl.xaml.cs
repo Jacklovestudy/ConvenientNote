@@ -12,6 +12,7 @@ namespace ConvenientNote.Views
     {
         private const double AlignmentSnapDistance = 10;
         private const double DraggedTodoScale = 1.035;
+        private readonly WorkspaceReplacementOperationGate _mutationGate = new();
 
         private CanvasTodoViewModel? _draggedTodo;
         private FrameworkElement? _draggedElement;
@@ -22,11 +23,39 @@ namespace ConvenientNote.Views
 
         public TodoBoardControl()
         {
+            DataContextChanged += TodoBoardControl_DataContextChanged;
             InitializeComponent();
             TodoBoardScrollViewer.AddHandler(
                 MouseWheelEvent,
                 new MouseWheelEventHandler(TodoBoardScrollViewer_MouseWheel),
                 true);
+            AttachWorkspaceReplacementGate(DataContext);
+        }
+
+        public async Task PrepareForWorkspaceReplacementAsync()
+        {
+            var drain = _mutationGate.PrepareAndDrainAsync();
+            IsEnabled = false;
+            await drain;
+        }
+
+        public void ResumeAfterWorkspaceReplacementFailure()
+        {
+            _mutationGate.CancelPreparation();
+            IsEnabled = true;
+        }
+
+        private void TodoBoardControl_DataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
+        {
+            AttachWorkspaceReplacementGate(e.NewValue);
+        }
+
+        private void AttachWorkspaceReplacementGate(object? dataContext)
+        {
+            if (dataContext is TodoBoardViewModel viewModel)
+            {
+                viewModel.SetWorkspaceReplacementOperationGate(_mutationGate);
+            }
         }
 
         private void TodoBoardScrollViewer_MouseWheel(object sender, MouseWheelEventArgs e)
@@ -45,6 +74,11 @@ namespace ConvenientNote.Views
 
         private async void ArrangeTodosButton_Click(object sender, RoutedEventArgs e)
         {
+            if (_mutationGate.IsPreparing)
+            {
+                return;
+            }
+
             if (DataContext is not TodoBoardViewModel viewModel)
             {
                 return;
@@ -64,6 +98,11 @@ namespace ConvenientNote.Views
         {
             try
             {
+                if (_mutationGate.IsPreparing)
+                {
+                    return;
+                }
+
                 if (sender is FrameworkElement { DataContext: CanvasTodoViewModel todo } &&
                     DataContext is TodoBoardViewModel viewModel)
                 {
@@ -78,6 +117,11 @@ namespace ConvenientNote.Views
 
         private void TodoCard_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
+            if (_mutationGate.IsPreparing)
+            {
+                return;
+            }
+
             if (IsInteractiveElement(e.OriginalSource as DependencyObject))
             {
                 return;
@@ -107,6 +151,11 @@ namespace ConvenientNote.Views
 
         private void TodoCard_PreviewMouseMove(object sender, MouseEventArgs e)
         {
+            if (_mutationGate.IsPreparing)
+            {
+                return;
+            }
+
             if (_draggedTodo is null ||
                 _draggedElement is null ||
                 e.LeftButton != MouseButtonState.Pressed)
@@ -139,6 +188,11 @@ namespace ConvenientNote.Views
 
         private async void TodoCard_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
+            if (_mutationGate.IsPreparing)
+            {
+                return;
+            }
+
             if (_draggedTodo is null ||
                 _draggedElement is null)
             {
@@ -161,6 +215,11 @@ namespace ConvenientNote.Views
 
         private async void TodoTitle_LostFocus(object sender, RoutedEventArgs e)
         {
+            if (_mutationGate.IsPreparing)
+            {
+                return;
+            }
+
             if (sender is FrameworkElement { DataContext: CanvasTodoViewModel todo } &&
                 DataContext is TodoBoardViewModel viewModel)
             {
@@ -170,6 +229,11 @@ namespace ConvenientNote.Views
 
         private async void TodoContent_LostFocus(object sender, RoutedEventArgs e)
         {
+            if (_mutationGate.IsPreparing)
+            {
+                return;
+            }
+
             if (sender is FrameworkElement { DataContext: CanvasTodoViewModel todo } &&
                 DataContext is TodoBoardViewModel viewModel)
             {
@@ -179,6 +243,11 @@ namespace ConvenientNote.Views
 
         private async void PriorityButton_Click(object sender, RoutedEventArgs e)
         {
+            if (_mutationGate.IsPreparing)
+            {
+                return;
+            }
+
             if (sender is FrameworkElement { DataContext: CanvasTodoViewModel todo } &&
                 DataContext is TodoBoardViewModel viewModel)
             {

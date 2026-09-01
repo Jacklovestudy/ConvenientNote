@@ -65,6 +65,39 @@ public sealed class JsonWorkspaceRepository : IWorkspaceRepository
         await SaveRecordsAsync(records, cancellationToken);
     }
 
+    public async Task ReplaceAllAsync(
+        Workspace workspace,
+        CancellationToken cancellationToken = default)
+    {
+        var filePath = Path.GetFullPath(_filePath);
+        var directory = Path.GetDirectoryName(filePath)!;
+        Directory.CreateDirectory(directory);
+
+        var temporaryFilePath = Path.Combine(
+            directory,
+            $"{Path.GetFileName(filePath)}.tmp-{Guid.NewGuid():N}");
+        try
+        {
+            await using (var stream = File.Create(temporaryFilePath))
+            {
+                await JsonSerializer.SerializeAsync(
+                    stream,
+                    new List<WorkspaceRecord> { ToRecord(workspace) },
+                    JsonOptions,
+                    cancellationToken);
+            }
+
+            File.Move(temporaryFilePath, filePath, overwrite: true);
+        }
+        finally
+        {
+            if (File.Exists(temporaryFilePath))
+            {
+                File.Delete(temporaryFilePath);
+            }
+        }
+    }
+
     private async Task<List<WorkspaceRecord>> LoadRecordsAsync(CancellationToken cancellationToken)
     {
         if (!File.Exists(_filePath))

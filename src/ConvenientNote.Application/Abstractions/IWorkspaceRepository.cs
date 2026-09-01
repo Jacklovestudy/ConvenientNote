@@ -10,5 +10,7 @@ public interface IWorkspaceRepository
 
     Task SaveAsync(Workspace workspace, CancellationToken cancellationToken = default);
 
+    Task ReplaceAllAsync(Workspace workspace, CancellationToken cancellationToken = default);
+
     Task DeleteAsync(WorkspaceId workspaceId, CancellationToken cancellationToken = default);
 }

@@ -4,5 +4,5 @@
              xmlns:prism="http://prismlibrary.com/"
              xmlns:views="clr-namespace:ConvenientNote.Views"
              prism:ViewModelLocator.AutoWireViewModel="True">
-    <views:TodoBoardControl />
+    <views:TodoBoardControl x:Name="TodoBoard" />
 </UserControl>

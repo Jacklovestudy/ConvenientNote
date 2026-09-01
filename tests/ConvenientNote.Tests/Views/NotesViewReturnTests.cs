@@ -110,6 +110,12 @@ public sealed class NotesViewReturnTests
             return Task.CompletedTask;
         }
 
+        public Task ReplaceAllAsync(Workspace workspace, CancellationToken cancellationToken = default)
+        {
+            Workspace = workspace;
+            return Task.CompletedTask;
+        }
+
         public Task DeleteAsync(WorkspaceId workspaceId, CancellationToken cancellationToken = default) => Task.CompletedTask;
     }
 }
