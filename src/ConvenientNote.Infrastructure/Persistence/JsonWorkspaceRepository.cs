@@ -1,6 +1,7 @@
 using System.Text.Json;
 using ConvenientNote.Application.Abstractions;
 using ConvenientNote.Application.Workspaces;
+using ConvenientNote.Domain;
 using ConvenientNote.Domain.Notes;
 using ConvenientNote.Domain.Workspaces;
 
@@ -65,37 +66,40 @@ public sealed class JsonWorkspaceRepository : IWorkspaceRepository
         await SaveRecordsAsync(records, cancellationToken);
     }
 
-    public async Task ReplaceAllAsync(
-        Workspace workspace,
+    public async Task ReplaceActiveNotesAsync(
+        WorkspaceId workspaceId,
+        IReadOnlyCollection<Note> importedNotes,
         CancellationToken cancellationToken = default)
     {
-        var filePath = Path.GetFullPath(_filePath);
-        var directory = Path.GetDirectoryName(filePath)!;
-        Directory.CreateDirectory(directory);
-
-        var temporaryFilePath = Path.Combine(
-            directory,
-            $"{Path.GetFileName(filePath)}.tmp-{Guid.NewGuid():N}");
-        try
+        var records = await LoadRecordsAsync(cancellationToken);
+        var workspaceIndex = records.FindIndex(record => record.Id == workspaceId.Value);
+        if (workspaceIndex < 0)
         {
-            await using (var stream = File.Create(temporaryFilePath))
-            {
-                await JsonSerializer.SerializeAsync(
-                    stream,
-                    new List<WorkspaceRecord> { ToRecord(workspace) },
-                    JsonOptions,
-                    cancellationToken);
-            }
+            throw new DomainException($"Workspace '{workspaceId}' was not found.");
+        }
 
-            File.Move(temporaryFilePath, filePath, overwrite: true);
-        }
-        finally
+        var workspace = records[workspaceIndex];
+        var activeNotes = workspace.Notes
+            .Where(note => note.BoardKey == TodoBoardKeys.Notes && !note.IsDeleted)
+            .ToList();
+        var preservedNoteIds = records
+            .SelectMany(record => record.Id == workspaceId.Value
+                ? record.Notes.Except(activeNotes)
+                : record.Notes)
+            .Select(note => note.Id)
+            .ToHashSet();
+
+        ValidateImportedActiveNotes(importedNotes, preservedNoteIds);
+
+        records[workspaceIndex] = workspace with
         {
-            if (File.Exists(temporaryFilePath))
-            {
-                File.Delete(temporaryFilePath);
-            }
-        }
+            Notes = workspace.Notes
+                .Except(activeNotes)
+                .Concat(importedNotes.Select(ToRecord))
+                .ToList()
+        };
+
+        await ReplaceRecordsAtomicallyAsync(records, cancellationToken);
     }
 
     private async Task<List<WorkspaceRecord>> LoadRecordsAsync(CancellationToken cancellationToken)
@@ -126,6 +130,42 @@ public sealed class JsonWorkspaceRepository : IWorkspaceRepository
 
         await using var stream = File.Create(_filePath);
         await JsonSerializer.SerializeAsync(stream, records, JsonOptions, cancellationToken);
+    }
+
+    private async Task ReplaceRecordsAtomicallyAsync(
+        List<WorkspaceRecord> records,
+        CancellationToken cancellationToken)
+    {
+        var filePath = Path.GetFullPath(_filePath);
+        var directory = Path.GetDirectoryName(filePath)!;
+        Directory.CreateDirectory(directory);
+
+        var temporaryFilePath = Path.Combine(
+            directory,
+            $"{Path.GetFileName(filePath)}.tmp-{Guid.NewGuid():N}");
+        try
+        {
+            await using (var stream = File.Create(temporaryFilePath))
+            {
+                await JsonSerializer.SerializeAsync(stream, records, JsonOptions, cancellationToken);
+            }
+
+            File.Move(temporaryFilePath, filePath, overwrite: true);
+        }
+        finally
+        {
+            try
+            {
+                if (File.Exists(temporaryFilePath))
+                {
+                    File.Delete(temporaryFilePath);
+                }
+            }
+            catch
+            {
+                // Cleanup failures must not hide a serialization or replacement failure.
+            }
+        }
     }
 
     private static Workspace ToDomain(WorkspaceRecord record)
@@ -190,6 +230,54 @@ public sealed class JsonWorkspaceRepository : IWorkspaceRepository
                 UpdatedAt = note.UpdatedAt
             }).ToList()
         };
+    }
+
+    private static NoteRecord ToRecord(Note note)
+    {
+        return new NoteRecord
+        {
+            Id = note.Id.Value,
+            BoardKey = note.BoardKey,
+            Priority = note.Priority,
+            Title = note.Title,
+            Content = note.Content,
+            X = note.Position.X,
+            Y = note.Position.Y,
+            Width = note.Size.Width,
+            Height = note.Size.Height,
+            Color = note.Color,
+            ZIndex = note.ZIndex,
+            IsCompleted = note.IsCompleted,
+            RichContent = note.RichContent,
+            NotebookId = note.NotebookId?.Value,
+            Tags = note.Tags.ToList(),
+            IsPinned = note.IsPinned,
+            IsFavorite = note.IsFavorite,
+            IsDeleted = note.IsDeleted,
+            CreatedAt = note.CreatedAt,
+            UpdatedAt = note.UpdatedAt
+        };
+    }
+
+    private static void ValidateImportedActiveNotes(
+        IReadOnlyCollection<Note> importedNotes,
+        IReadOnlySet<Guid> preservedNoteIds)
+    {
+        if (importedNotes.Any(note => note.BoardKey != TodoBoardKeys.Notes || note.IsDeleted))
+        {
+            throw new DomainException("Imported notes must be active Notes records.");
+        }
+
+        var importedIds = importedNotes.Select(note => note.Id.Value).ToList();
+        if (importedIds.Distinct().Count() != importedIds.Count)
+        {
+            throw new DomainException("Imported notes cannot contain duplicate IDs.");
+        }
+
+        if (importedIds.Any(preservedNoteIds.Contains))
+        {
+            throw new DomainException("An imported note ID collides with a preserved record.");
+        }
     }
 
     private sealed record WorkspaceRecord

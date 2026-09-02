@@ -49,13 +49,45 @@ public sealed class WorkspaceApplicationService
         return ToSnapshot(workspace);
     }
 
-    public async Task<WorkspaceSnapshot> ReplaceAllAsync(
-        Workspace workspace,
+    public async Task<WorkspaceSnapshot> ReplaceActiveNotesAsync(
+        WorkspaceId workspaceId,
+        IReadOnlyCollection<Note> importedNotes,
         CancellationToken cancellationToken = default)
     {
-        await _workspaceRepository.ReplaceAllAsync(workspace, cancellationToken);
+        return await ReplaceActiveNotesAsync(
+            workspaceId,
+            importedNotes,
+            cancellationToken,
+            static () => { });
+    }
+
+    public async Task<WorkspaceSnapshot> ReplaceActiveNotesAsync(
+        WorkspaceId workspaceId,
+        IReadOnlyCollection<Note> importedNotes,
+        CancellationToken cancellationToken,
+        Action replacementCommitted)
+    {
+        await CommitActiveNotesReplacementAsync(
+            workspaceId,
+            importedNotes,
+            cancellationToken,
+            replacementCommitted);
+        var workspace = await GetRequiredWorkspaceAsync(workspaceId, cancellationToken);
 
         return ToSnapshot(workspace);
+    }
+
+    public async Task CommitActiveNotesReplacementAsync(
+        WorkspaceId workspaceId,
+        IReadOnlyCollection<Note> importedNotes,
+        CancellationToken cancellationToken,
+        Action replacementCommitted)
+    {
+        ArgumentNullException.ThrowIfNull(importedNotes);
+        ArgumentNullException.ThrowIfNull(replacementCommitted);
+
+        await _workspaceRepository.ReplaceActiveNotesAsync(workspaceId, importedNotes, cancellationToken);
+        replacementCommitted();
     }
 
     public async Task<WorkspaceSnapshot> GetWorkspaceAsync(

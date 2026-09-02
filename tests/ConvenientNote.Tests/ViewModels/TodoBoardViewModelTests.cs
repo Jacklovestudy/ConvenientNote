@@ -184,13 +184,7 @@ public sealed class TodoBoardViewModelTests
             return Task.CompletedTask;
         }
 
-        public Task ReplaceAllAsync(
-            Workspace workspace,
-            CancellationToken cancellationToken = default)
-        {
-            StoredWorkspace = Clone(workspace);
-            return Task.CompletedTask;
-        }
+        public Task ReplaceActiveNotesAsync(WorkspaceId workspaceId, IReadOnlyCollection<Note> importedNotes, CancellationToken cancellationToken = default) => Task.CompletedTask;
 
         private static Workspace Clone(Workspace workspace)
         {

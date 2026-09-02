@@ -22,7 +22,7 @@ public partial class RichNoteEditorControl : UserControl
     private readonly DispatcherTimer _saveTimer = new() { Interval = TimeSpan.FromMilliseconds(900) };
     private readonly DispatcherTimer _saveFeedbackTimer = new() { Interval = TimeSpan.FromMilliseconds(1500) };
     private readonly ManualSaveRequestGate _manualSaveRequestGate = new();
-    private readonly WorkspaceReplacementOperationGate _saveOperationGate = new();
+    private readonly NotesReplacementOperationGate _saveOperationGate = new();
     private NotesViewModel? _viewModel;
     private bool _isLoading;
     private bool _isUpdatingFontSize;
@@ -187,16 +187,16 @@ public partial class RichNoteEditorControl : UserControl
         }
     }
 
-    public Task CancelPendingSaveAsync()
+    public Task PrepareForNotesReplacementAsync()
     {
         _resumePendingSaveAfterReplacementFailure = _saveTimer.IsEnabled;
         _saveTimer.Stop();
         return _saveOperationGate.PrepareAndDrainAsync();
     }
 
-    public void ResumePendingSave()
+    public void ResumeAfterNotesReplacementFailure()
     {
-        _saveOperationGate.CancelPreparation();
+        _saveOperationGate.Resume();
         var resumeSave = _resumePendingSaveAfterReplacementFailure || _saveNeededAfterReplacementFailure;
         _resumePendingSaveAfterReplacementFailure = false;
         _saveNeededAfterReplacementFailure = false;

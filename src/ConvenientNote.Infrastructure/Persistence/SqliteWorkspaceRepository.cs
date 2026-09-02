@@ -1,5 +1,6 @@
 using ConvenientNote.Application.Abstractions;
 using ConvenientNote.Application.Workspaces;
+using ConvenientNote.Domain;
 using ConvenientNote.Domain.Notes;
 using ConvenientNote.Domain.Workspaces;
 using ConvenientNote.Infrastructure.Persistence.Entities;
@@ -124,15 +125,34 @@ public sealed class SqliteWorkspaceRepository : IWorkspaceRepository
         await context.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task ReplaceAllAsync(
-        Workspace workspace,
+    public async Task ReplaceActiveNotesAsync(
+        WorkspaceId workspaceId,
+        IReadOnlyCollection<Note> importedNotes,
         CancellationToken cancellationToken = default)
     {
         await using var context = await CreateInitializedContextAsync(cancellationToken);
-        await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
+        var workspace = await context.Workspaces
+            .Include(current => current.Notes)
+            .FirstOrDefaultAsync(current => current.Id == workspaceId.Value, cancellationToken)
+            ?? throw new DomainException($"Workspace '{workspaceId}' was not found.");
 
-        context.Workspaces.RemoveRange(context.Workspaces);
-        context.Workspaces.Add(ToEntity(workspace));
+        var activeNotes = workspace.Notes
+            .Where(note => note.BoardKey == TodoBoardKeys.Notes && !note.IsDeleted)
+            .ToList();
+        var preservedNoteIds = await context.Notes
+            .Where(note => note.WorkspaceId != workspaceId.Value
+                || note.BoardKey != TodoBoardKeys.Notes
+                || note.IsDeleted)
+            .Select(note => note.Id)
+            .ToHashSetAsync(cancellationToken);
+
+        ValidateImportedActiveNotes(importedNotes, preservedNoteIds);
+
+        await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
+        context.Notes.RemoveRange(activeNotes);
+        await context.SaveChangesAsync(cancellationToken);
+
+        context.Notes.AddRange(importedNotes.Select(note => ToEntity(note, workspaceId)));
         await context.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
     }
@@ -410,6 +430,27 @@ public sealed class SqliteWorkspaceRepository : IWorkspaceRepository
         catch (JsonException)
         {
             return [];
+        }
+    }
+
+    private static void ValidateImportedActiveNotes(
+        IReadOnlyCollection<Note> importedNotes,
+        IReadOnlySet<Guid> preservedNoteIds)
+    {
+        if (importedNotes.Any(note => note.BoardKey != TodoBoardKeys.Notes || note.IsDeleted))
+        {
+            throw new DomainException("Imported notes must be active Notes records.");
+        }
+
+        var importedIds = importedNotes.Select(note => note.Id.Value).ToList();
+        if (importedIds.Distinct().Count() != importedIds.Count)
+        {
+            throw new DomainException("Imported notes cannot contain duplicate IDs.");
+        }
+
+        if (importedIds.Any(preservedNoteIds.Contains))
+        {
+            throw new DomainException("An imported note ID collides with a preserved record.");
         }
     }
 }

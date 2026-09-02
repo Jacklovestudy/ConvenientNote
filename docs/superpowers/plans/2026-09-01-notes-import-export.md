@@ -46,10 +46,10 @@
 **Files:**
 - Create: `Services/NotesBackupModels.cs`
 - Create: `Services/NotesBackupSerializer.cs`
-- Delete after replacement: `Services/WorkspaceBackupModels.cs`
-- Delete after replacement: `Services/WorkspaceBackupSerializer.cs`
+- Keep temporarily for compile compatibility; delete in Task 4 after all consumers move to notes-only services: `Services/WorkspaceBackupModels.cs`
+- Keep temporarily for compile compatibility; delete in Task 4 after all consumers move to notes-only services: `Services/WorkspaceBackupSerializer.cs`
 - Test: `tests/ConvenientNote.Tests/Services/NotesBackupSerializerTests.cs`
-- Delete after replacement: `tests/ConvenientNote.Tests/Services/WorkspaceBackupSerializerTests.cs`
+- Keep temporarily; delete in Task 4 with the obsolete whole-workspace implementation: `tests/ConvenientNote.Tests/Services/WorkspaceBackupSerializerTests.cs`
 
 **Interfaces:**
 - Produces `NotesBackupManifest(string Format, int SchemaVersion, string AppVersion, DateTimeOffset ExportedAtUtc)`.
@@ -118,7 +118,7 @@ Run `git diff --check`; confirm no workspace/todo DTO enters the notes package.
 - Delete after replacement: `tests/ConvenientNote.Tests/Infrastructure/WorkspaceReplacementTests.cs`
 
 **Interfaces:**
-- Replaces whole-store `ReplaceAllAsync` with:
+- Adds the notes-only contract below. Keep whole-store `ReplaceAllAsync` temporarily until Task 4 removes the obsolete whole-workspace consumers:
 
 ```csharp
 Task ReplaceActiveNotesAsync(
@@ -167,7 +167,7 @@ Expected: active-note replacement, rollback, collision, and existing todo/persis
 
 - [ ] **Step 8: Inspect without committing**
 
-Confirm whole-store `ReplaceAllAsync` is gone and no repository path deletes the workspace or unrelated notes.
+Confirm the new path never calls whole-store `ReplaceAllAsync` and no notes-only repository path deletes the workspace or unrelated notes. Task 4 removes the obsolete method after its remaining consumers are deleted.
 
 ---
 
@@ -176,12 +176,12 @@ Confirm whole-store `ReplaceAllAsync` is gone and no repository path deletes the
 **Files:**
 - Create: `Services/NotesBackupService.cs`
 - Create: `Services/NotesBackupPackageStager.cs`
-- Delete after replacement: `Services/WorkspaceBackupService.cs`
-- Delete after replacement: `Services/WorkspaceBackupPackageStager.cs`
-- Rename/update: `Services/WorkspaceBackupImportFailureMessages.cs` to `Services/NotesBackupImportFailureMessages.cs`
+- Keep temporarily for compile compatibility; delete in Task 4: `Services/WorkspaceBackupService.cs`
+- Keep temporarily for compile compatibility; delete in Task 4: `Services/WorkspaceBackupPackageStager.cs`
+- Create notes-only counterpart now and delete the old file in Task 4: `Services/NotesBackupImportFailureMessages.cs`
 - Test: `tests/ConvenientNote.Tests/Services/NotesBackupArchiveTests.cs`
 - Test: `tests/ConvenientNote.Tests/Services/NotesBackupImportTests.cs`
-- Delete replaced workspace-backup test files.
+- Keep replaced workspace-backup test files temporarily; delete them in Task 4 with the obsolete implementation.
 
 **Interfaces:**
 - `ExportAsync(string destinationPath, CancellationToken)` returns `NotesBackupExportResult`.
@@ -244,6 +244,8 @@ Confirm the implementation never copies the SQLite database, never swaps the who
 - Create/rename: `Views/NotesReplacementOperationGate.cs`
 - Keep: `Views/WorkspaceTransferRequestGate.cs` as shared reentrancy/close state.
 - Delete: `Views/WorkspaceReplacementCoordinator.cs`
+- Delete obsolete whole-workspace backup models, serializer, service, stager, failure-message helper, and their replaced tests.
+- Remove the obsolete whole-store `ReplaceAllAsync` repository/application contracts and their replaced tests after all consumers have moved.
 - Remove obsolete replacement-gate changes from Todo/Trash root views, controls, and view models.
 - Test: `tests/ConvenientNote.Tests/Views/NotesTransferTests.cs`
 - Update: `tests/ConvenientNote.Tests/Views/MainWindowWorkspaceTransferTests.cs`

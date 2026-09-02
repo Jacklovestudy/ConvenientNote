@@ -1,11 +1,11 @@
 namespace ConvenientNote.Views;
 
-internal sealed class WorkspaceTransferRequestGate
+public sealed class WorkspaceTransferRequestGate
 {
     private readonly object _syncRoot = new();
     private bool _requestInProgress;
 
-    public bool IsRequestInProgress
+    public bool IsInProgress
     {
         get
         {
@@ -42,5 +42,5 @@ internal sealed class WorkspaceTransferRequestGate
 internal static class WorkspaceTransferCloseGuard
 {
     public static bool ShouldCancelWindowClose(WorkspaceTransferRequestGate gate) =>
-        gate.IsRequestInProgress;
+        gate.IsInProgress;
 }

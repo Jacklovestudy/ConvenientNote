@@ -138,10 +138,10 @@ public sealed class RichNoteEditorSaveFeedbackTests
 
             Assert.True(GetSaveTimer(control).IsEnabled);
 
-            control.CancelPendingSaveAsync().GetAwaiter().GetResult();
+            control.PrepareForNotesReplacementAsync().GetAwaiter().GetResult();
             Assert.False(GetSaveTimer(control).IsEnabled);
 
-            control.ResumePendingSave();
+            control.ResumeAfterNotesReplacementFailure();
             Assert.True(GetSaveTimer(control).IsEnabled);
         });
     }
@@ -152,13 +152,13 @@ public sealed class RichNoteEditorSaveFeedbackTests
         RunSta(() =>
         {
             var control = new RichNoteEditorControl();
-            var gate = Assert.IsType<WorkspaceReplacementOperationGate>(typeof(RichNoteEditorControl)
+            var gate = Assert.IsType<NotesReplacementOperationGate>(typeof(RichNoteEditorControl)
                 .GetField("_saveOperationGate", BindingFlags.Instance | BindingFlags.NonPublic)!
                 .GetValue(control));
             using var acceptedImageOperation = gate.TryBegin();
             Assert.NotNull(acceptedImageOperation);
 
-            var preparation = control.CancelPendingSaveAsync();
+            var preparation = control.PrepareForNotesReplacementAsync();
             Assert.False(preparation.IsCompleted);
             typeof(RichNoteEditorControl)
                 .GetMethod("ScheduleSave", BindingFlags.Instance | BindingFlags.NonPublic)!
@@ -166,7 +166,7 @@ public sealed class RichNoteEditorSaveFeedbackTests
 
             acceptedImageOperation.Dispose();
             preparation.GetAwaiter().GetResult();
-            control.ResumePendingSave();
+            control.ResumeAfterNotesReplacementFailure();
 
             Assert.True(GetSaveTimer(control).IsEnabled);
         });

@@ -52,11 +52,7 @@ public sealed class WorkspaceNotesMetadataTests
             return Task.CompletedTask;
         }
 
-        public Task ReplaceAllAsync(Workspace workspace, CancellationToken cancellationToken = default)
-        {
-            _workspace = workspace;
-            return Task.CompletedTask;
-        }
+        public Task ReplaceActiveNotesAsync(WorkspaceId workspaceId, IReadOnlyCollection<Note> importedNotes, CancellationToken cancellationToken = default) => Task.CompletedTask;
 
         public Task DeleteAsync(WorkspaceId workspaceId, CancellationToken cancellationToken = default)
         {

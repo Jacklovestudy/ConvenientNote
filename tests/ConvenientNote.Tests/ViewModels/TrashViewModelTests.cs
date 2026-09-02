@@ -42,7 +42,7 @@ public sealed class TrashViewModelTests
         public Task<IReadOnlyList<Workspace>> ListAsync(CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<Workspace>>(_workspace is null ? [] : [_workspace]);
         public Task<Workspace?> GetAsync(WorkspaceId workspaceId, CancellationToken cancellationToken = default) => Task.FromResult(_workspace?.Id == workspaceId ? _workspace : null);
         public Task SaveAsync(Workspace workspace, CancellationToken cancellationToken = default) { _workspace = workspace; return Task.CompletedTask; }
-        public Task ReplaceAllAsync(Workspace workspace, CancellationToken cancellationToken = default) { _workspace = workspace; return Task.CompletedTask; }
+        public Task ReplaceActiveNotesAsync(WorkspaceId workspaceId, IReadOnlyCollection<Note> importedNotes, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task DeleteAsync(WorkspaceId workspaceId, CancellationToken cancellationToken = default) => Task.CompletedTask;
     }
 }

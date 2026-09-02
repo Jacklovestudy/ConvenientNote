@@ -25,7 +25,9 @@ namespace ConvenientNote
             containerRegistry.RegisterSingleton<WorkspaceApplicationService>();
             containerRegistry.RegisterSingleton<OpenMeteoWeatherService>();
             containerRegistry.RegisterSingleton<NoteMediaService>();
-            containerRegistry.RegisterSingleton<WorkspaceBackupService>();
+            containerRegistry.RegisterSingleton<NotesBackupService>();
+            containerRegistry.RegisterSingleton<NotesBackupPackageStager>();
+            containerRegistry.RegisterSingleton<WorkspaceTransferRequestGate>();
             containerRegistry.RegisterSingleton<RichTextDocumentService>();
             containerRegistry.RegisterForNavigation<DayTodoView>();
             containerRegistry.RegisterForNavigation<NotesView>();

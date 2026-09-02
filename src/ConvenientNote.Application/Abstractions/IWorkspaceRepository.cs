@@ -1,3 +1,4 @@
+using ConvenientNote.Domain.Notes;
 using ConvenientNote.Domain.Workspaces;
 
 namespace ConvenientNote.Application.Abstractions;
@@ -10,7 +11,10 @@ public interface IWorkspaceRepository
 
     Task SaveAsync(Workspace workspace, CancellationToken cancellationToken = default);
 
-    Task ReplaceAllAsync(Workspace workspace, CancellationToken cancellationToken = default);
+    Task ReplaceActiveNotesAsync(
+        WorkspaceId workspaceId,
+        IReadOnlyCollection<Note> importedNotes,
+        CancellationToken cancellationToken = default);
 
     Task DeleteAsync(WorkspaceId workspaceId, CancellationToken cancellationToken = default);
 }

@@ -3,38 +3,40 @@ using System.Text.Json;
 using ConvenientNote.Application.Workspaces;
 using ConvenientNote.Domain;
 using ConvenientNote.Domain.Notes;
-using ConvenientNote.Domain.Workspaces;
 
 namespace ConvenientNote.Services;
 
-public static class WorkspaceBackupSerializer
+public static class NotesBackupSerializer
 {
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
-
-    public static WorkspaceBackupDocument CreateDocument(WorkspaceSnapshot snapshot)
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
-        ArgumentNullException.ThrowIfNull(snapshot);
+        RespectRequiredConstructorParameters = true
+    };
 
-        return new WorkspaceBackupDocument(
-            snapshot.Id.Value,
-            snapshot.Name,
-            snapshot.CreatedAt,
-            snapshot.UpdatedAt,
-            snapshot.Notes.Select(ToBackupNote).ToList());
+    public static NotesBackupDocument CreateDocument(IEnumerable<NoteSnapshot> notes)
+    {
+        ArgumentNullException.ThrowIfNull(notes);
+
+        return new NotesBackupDocument(
+            notes.Where(static note =>
+                note.BoardKey == TodoBoardKeys.Notes && !note.IsDeleted)
+                .Select(ToBackupNote)
+                .ToList());
     }
 
     public static Task WriteDocumentAsync(
         Stream stream,
-        WorkspaceBackupDocument document,
+        NotesBackupDocument document,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(stream);
         ArgumentNullException.ThrowIfNull(document);
+        ValidateDocument(document);
 
         return JsonSerializer.SerializeAsync(stream, document, JsonOptions, cancellationToken);
     }
 
-    public static async Task<WorkspaceBackupDocument> ReadDocumentAsync(
+    public static async Task<NotesBackupDocument> ReadDocumentAsync(
         Stream stream,
         CancellationToken cancellationToken = default)
     {
@@ -42,43 +44,37 @@ public static class WorkspaceBackupSerializer
 
         try
         {
-            var document = await JsonSerializer.DeserializeAsync<WorkspaceBackupDocument>(
+            var document = await JsonSerializer.DeserializeAsync<NotesBackupDocument>(
                 stream,
                 JsonOptions,
                 cancellationToken);
             ValidateDocument(document);
-            _ = ToWorkspace(document!);
+            _ = ToNotes(document!);
             return document!;
         }
         catch (JsonException exception)
         {
-            throw new InvalidDataException("Workspace backup JSON is invalid.", exception);
+            throw new InvalidDataException("Notes backup JSON is invalid.", exception);
         }
     }
 
-    public static Workspace ToWorkspace(WorkspaceBackupDocument document)
+    public static IReadOnlyList<Note> ToNotes(NotesBackupDocument document)
     {
         ValidateDocument(document);
 
         try
         {
-            var notes = document.Notes.Select(ToNote).ToList();
-            return new Workspace(
-                new WorkspaceId(document.WorkspaceId),
-                document.WorkspaceName,
-                document.CreatedAt,
-                document.UpdatedAt,
-                notes);
+            return document.Notes.Select(ToNote).ToList();
         }
         catch (DomainException exception)
         {
-            throw new InvalidDataException("Workspace backup contains invalid domain values.", exception);
+            throw new InvalidDataException("Notes backup contains invalid domain values.", exception);
         }
     }
 
-    private static WorkspaceBackupNote ToBackupNote(NoteSnapshot note)
+    private static NotesBackupNote ToBackupNote(NoteSnapshot note)
     {
-        return new WorkspaceBackupNote(
+        return new NotesBackupNote(
             note.Id.Value,
             note.BoardKey,
             note.Priority,
@@ -101,8 +97,13 @@ public static class WorkspaceBackupSerializer
             note.UpdatedAt);
     }
 
-    private static Note ToNote(WorkspaceBackupNote note)
+    private static Note ToNote(NotesBackupNote note)
     {
+        if (note.BoardKey != TodoBoardKeys.Notes || note.IsDeleted)
+        {
+            throw new InvalidDataException("Notes backup can contain only active Notes records.");
+        }
+
         return new Note(
             new NoteId(note.Id),
             note.BoardKey,
@@ -124,21 +125,16 @@ public static class WorkspaceBackupSerializer
             note.IsDeleted);
     }
 
-    private static void ValidateDocument(WorkspaceBackupDocument? document)
+    private static void ValidateDocument(NotesBackupDocument? document)
     {
         if (document is null)
         {
-            throw new InvalidDataException("Workspace backup JSON cannot be null.");
+            throw new InvalidDataException("Notes backup JSON cannot be null.");
         }
 
-        if (document.WorkspaceId == Guid.Empty)
+        if (document.Notes is null)
         {
-            throw new InvalidDataException("Workspace backup must contain a workspace ID.");
-        }
-
-        if (document.WorkspaceName is null || document.Notes is null)
-        {
-            throw new InvalidDataException("Workspace backup contains missing required values.");
+            throw new InvalidDataException("Notes backup must contain notes.");
         }
 
         var noteIds = new HashSet<Guid>();
@@ -146,19 +142,29 @@ public static class WorkspaceBackupSerializer
         {
             if (note is null || note.Id == Guid.Empty)
             {
-                throw new InvalidDataException("Workspace backup must contain note IDs.");
+                throw new InvalidDataException("Notes backup must contain note IDs.");
             }
 
             if (!noteIds.Add(note.Id))
             {
-                throw new InvalidDataException("Workspace backup cannot contain duplicate note IDs.");
+                throw new InvalidDataException("Notes backup cannot contain duplicate note IDs.");
             }
 
             if (note.BoardKey is null || note.Priority is null || note.Title is null ||
                 note.Content is null || note.Color is null || note.RichContent is null ||
                 note.Tags is null || note.Tags.Any(static tag => tag is null))
             {
-                throw new InvalidDataException("Workspace backup contains missing note values.");
+                throw new InvalidDataException("Notes backup contains missing note values.");
+            }
+
+            if (note.NotebookId == Guid.Empty)
+            {
+                throw new InvalidDataException("Notes backup contains an invalid notebook ID.");
+            }
+
+            if (note.BoardKey != TodoBoardKeys.Notes || note.IsDeleted)
+            {
+                throw new InvalidDataException("Notes backup can contain only active Notes records.");
             }
         }
     }

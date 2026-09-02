@@ -19,7 +19,7 @@ public sealed class NotesViewModel : BindableBase, INavigationAware
     private readonly NoteMediaService _mediaService;
     private readonly List<NoteCardViewModel> _allNotes = new();
     private readonly SemaphoreSlim _saveGate = new(1, 1);
-    private WorkspaceReplacementOperationGate? _workspaceReplacementOperationGate;
+    private NotesReplacementOperationGate? _notesReplacementOperationGate;
     private WorkspaceId? _workspaceId;
     private string _searchText = string.Empty;
     private NoteCardViewModel? _selectedNote;
@@ -130,6 +130,7 @@ public sealed class NotesViewModel : BindableBase, INavigationAware
     public Visibility WallVisibility => IsEditorOpen ? Visibility.Collapsed : Visibility.Visible;
     public Visibility EditorVisibility => IsEditorOpen ? Visibility.Visible : Visibility.Collapsed;
     public Visibility EmptyVisibility => FilteredNotes.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+    public string NotesSummary => $"共 {_allNotes.Count} 条笔记";
 
     public string SaveStatus
     {
@@ -140,10 +141,10 @@ public sealed class NotesViewModel : BindableBase, INavigationAware
     public RichTextDocumentService DocumentService => _documentService;
     public NoteMediaService MediaService => _mediaService;
 
-    internal void SetWorkspaceReplacementOperationGate(WorkspaceReplacementOperationGate operationGate) =>
-        _workspaceReplacementOperationGate = operationGate;
+    internal void SetNotesReplacementOperationGate(NotesReplacementOperationGate operationGate) =>
+        _notesReplacementOperationGate = operationGate;
 
-    internal bool HasWorkspaceReplacementOperationGate => _workspaceReplacementOperationGate is not null;
+    internal bool HasNotesReplacementOperationGate => _notesReplacementOperationGate is not null;
 
     public async Task InitializeAsync()
     {
@@ -316,8 +317,8 @@ public sealed class NotesViewModel : BindableBase, INavigationAware
 
     private bool TryBeginWorkspaceMutation(out IDisposable? operation)
     {
-        operation = _workspaceReplacementOperationGate?.TryBegin();
-        return _workspaceReplacementOperationGate is null || operation is not null;
+        operation = _notesReplacementOperationGate?.TryBegin();
+        return _notesReplacementOperationGate is null || operation is not null;
     }
 
     private void RefreshFilteredNotes()
@@ -345,6 +346,7 @@ public sealed class NotesViewModel : BindableBase, INavigationAware
             FilteredNotes.Add(note);
         }
         RaisePropertyChanged(nameof(EmptyVisibility));
+        RaisePropertyChanged(nameof(NotesSummary));
     }
 
     private void RefreshTags()

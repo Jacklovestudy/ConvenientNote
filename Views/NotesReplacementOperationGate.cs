@@ -1,13 +1,6 @@
 namespace ConvenientNote.Views;
 
-internal interface IWorkspaceReplacementParticipant
-{
-    Task PrepareForWorkspaceReplacementAsync();
-
-    void ResumeAfterWorkspaceReplacementFailure();
-}
-
-internal sealed class WorkspaceReplacementOperationGate
+internal sealed class NotesReplacementOperationGate
 {
     private readonly object _syncRoot = new();
     private int _activeOperationCount;
@@ -54,13 +47,13 @@ internal sealed class WorkspaceReplacementOperationGate
         }
     }
 
-    public void CancelPreparation()
+    public void Resume()
     {
         lock (_syncRoot)
         {
             if (_activeOperationCount != 0)
             {
-                throw new InvalidOperationException("Cannot resume workspace mutations while operations are still running.");
+                throw new InvalidOperationException("Cannot resume Notes mutations while operations are still running.");
             }
 
             _isPreparing = false;
@@ -80,9 +73,9 @@ internal sealed class WorkspaceReplacementOperationGate
         }
     }
 
-    private sealed class Operation(WorkspaceReplacementOperationGate owner) : IDisposable
+    private sealed class Operation(NotesReplacementOperationGate owner) : IDisposable
     {
-        private WorkspaceReplacementOperationGate? _owner = owner;
+        private NotesReplacementOperationGate? _owner = owner;
 
         public void Dispose() => Interlocked.Exchange(ref _owner, null)?.CompleteOperation();
     }
