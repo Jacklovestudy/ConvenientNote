@@ -1,8 +1,10 @@
 using System.IO;
+using System.Text;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
+using System.Windows.Markup;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
@@ -28,10 +30,10 @@ public sealed class RichTextDocumentService
         ArgumentNullException.ThrowIfNull(document);
         var model = new DocumentModel
         {
-            Blocks = document.Blocks.Select(SerializeBlock).Where(static block => block is not null).Cast<BlockModel>().ToList()
+            Blocks = DocumentOutline.LogicalBlocks(document.Blocks).Select(SerializeBlock).Where(static block => block is not null).Cast<BlockModel>().ToList()
         };
         var mediaPaths = model.Blocks
-            .SelectMany(static block => block.Inlines)
+            .SelectMany(EnumerateInlines)
             .Where(static inline => inline.Kind == "image" && !string.IsNullOrWhiteSpace(inline.Text))
             .Select(static inline => inline.Text)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -62,6 +64,15 @@ public sealed class RichTextDocumentService
                 document.Blocks.Add(DeserializeBlock(block));
             }
 
+            // Older notes used a separate bookmark flag. Promote only standalone
+            // paragraphs: list items must not silently become section boundaries.
+            foreach (var paragraph in document.Blocks.OfType<Paragraph>().Where(DocumentOutline.GetIsNavigationPoint))
+            {
+                if (DocumentOutline.GetHeadingLevel(paragraph) == 0)
+                    DocumentOutline.SetHeadingLevel(paragraph, 1);
+                DocumentOutline.SetIsNavigationPoint(paragraph, false);
+            }
+
             if (document.Blocks.Count == 0)
             {
                 document.Blocks.Add(new Paragraph());
@@ -81,8 +92,65 @@ public sealed class RichTextDocumentService
 
     public string ExtractPlainText(FlowDocument document)
     {
-        return new TextRange(document.ContentStart, document.ContentEnd).Text.TrimEnd('\r', '\n');
+        ArgumentNullException.ThrowIfNull(document);
+        var text = new StringBuilder();
+        AppendPlainText(document, text);
+        return text.ToString().TrimEnd('\r', '\n');
     }
+
+    private static void AppendPlainText(FlowDocument document, StringBuilder text)
+    {
+        // Read contiguous visible ranges together: ending individual ranges at a list
+        // can duplicate its generated marker, and trimming each block loses blank lines.
+        var start = document.ContentStart;
+        foreach (var folded in document.Blocks.OfType<FoldedSection>())
+        {
+            text.Append(new TextRange(start, folded.ContentStart).Text);
+            AppendPlainText(folded.HiddenDocument, text);
+            start = folded.NextBlock?.ContentStart ?? document.ContentEnd;
+        }
+        text.Append(new TextRange(start, document.ContentEnd).Text);
+    }
+
+    public FlowDocument CloneBlocks(IEnumerable<Block> blocks)
+    {
+        ArgumentNullException.ThrowIfNull(blocks);
+        var document = new FlowDocument();
+        foreach (var block in blocks)
+        {
+            if (block is FoldedSection folded)
+            {
+                foreach (var hidden in DocumentOutline.LogicalBlocks(folded.HiddenDocument.Blocks))
+                    document.Blocks.Add(ClonePresentationBlock(hidden));
+            }
+            else document.Blocks.Add(ClonePresentationBlock(block));
+        }
+        return document;
+    }
+
+    // Presentation snapshots preserve WPF formatting and blocks beyond the persisted JSON schema.
+    // The XAML is produced only from our in-memory document, never accepted from external input.
+    private static Block ClonePresentationBlock(Block block)
+    {
+        var clone = (Block)XamlReader.Parse(XamlWriter.Save(block));
+        // XamlWriter saves local values; freeze the effective inherited formatting at
+        // the snapshot root so it does not adopt the temporary FlowDocument defaults.
+        clone.FontFamily = block.FontFamily;
+        clone.FontSize = block.FontSize;
+        clone.FontStretch = block.FontStretch;
+        clone.FontStyle = block.FontStyle;
+        clone.FontWeight = block.FontWeight;
+        clone.Foreground = block.Foreground.CloneCurrentValue();
+        clone.FlowDirection = block.FlowDirection;
+        clone.TextAlignment = block.TextAlignment;
+        clone.LineHeight = block.LineHeight;
+        clone.LineStackingStrategy = block.LineStackingStrategy;
+        clone.Language = block.Language;
+        return clone;
+    }
+
+    private static IEnumerable<InlineModel> EnumerateInlines(BlockModel block) =>
+        block.Inlines.Concat(block.Items.SelectMany(EnumerateInlines)).Concat(block.Children.SelectMany(EnumerateInlines));
 
     private static BlockModel? SerializeBlock(Block block)
     {
@@ -94,6 +162,9 @@ public sealed class RichTextDocumentService
                 Alignment = paragraph.TextAlignment.ToString(),
                 FontSize = paragraph.FontSize,
                 LineSpacing = ParagraphLineSpacing.GetRatio(paragraph),
+                HeadingLevel = DocumentOutline.GetHeadingLevel(paragraph),
+                IsNavigationPoint = DocumentOutline.GetIsNavigationPoint(paragraph),
+                IsCollapsed = DocumentOutline.GetIsCollapsed(paragraph),
                 Inlines = paragraph.Inlines.SelectMany(SerializeInline).ToList()
             };
         }
@@ -109,6 +180,14 @@ public sealed class RichTextDocumentService
                     .Where(static item => item is not null)
                     .Cast<BlockModel>()
                     .ToList(),
+                Children = list.ListItems
+                    .Select(static item => new BlockModel
+                    {
+                        Kind = "list-item",
+                        Children = DocumentOutline.LogicalBlocks(item.Blocks).Select(SerializeBlock)
+                            .Where(static child => child is not null).Cast<BlockModel>().ToList()
+                    })
+                    .ToList(),
                 Inlines = list.ListItems
                     .SelectMany(static item => item.Blocks.OfType<Paragraph>())
                     .SelectMany(static paragraph => paragraph.Inlines.SelectMany(SerializeInline).Append(new InlineModel { Kind = "line-break" }))
@@ -116,10 +195,34 @@ public sealed class RichTextDocumentService
             };
         }
 
+        if (block is Section section)
+        {
+            return new BlockModel
+            {
+                Kind = "section",
+                Children = DocumentOutline.LogicalBlocks(section.Blocks).Select(SerializeBlock)
+                    .Where(static child => child is not null).Cast<BlockModel>().ToList()
+            };
+        }
+
         return null;
     }
 
     private static IEnumerable<InlineModel> SerializeInline(Inline inline)
+    {
+        var underline = inline.TextDecorations.Any(static decoration => decoration.Location == TextDecorationLocation.Underline);
+        var strikethrough = inline.TextDecorations.Any(static decoration => decoration.Location == TextDecorationLocation.Strikethrough);
+        foreach (var model in SerializeInlineContent(inline))
+        {
+            yield return model with
+            {
+                Underline = model.Underline || underline,
+                Strikethrough = model.Strikethrough || strikethrough
+            };
+        }
+    }
+
+    private static IEnumerable<InlineModel> SerializeInlineContent(Inline inline)
     {
         switch (inline)
         {
@@ -130,8 +233,6 @@ public sealed class RichTextDocumentService
                     Text = run.Text,
                     Bold = run.FontWeight == FontWeights.Bold,
                     Italic = run.FontStyle == FontStyles.Italic,
-                    Underline = run.TextDecorations == TextDecorations.Underline,
-                    Strikethrough = run.TextDecorations == TextDecorations.Strikethrough,
                     Foreground = (run.Foreground as SolidColorBrush)?.Color.ToString(),
                     FontSize = run.FontSize
                 };
@@ -171,12 +272,28 @@ public sealed class RichTextDocumentService
 
     private Block DeserializeBlock(BlockModel model)
     {
+        if (model.Kind == "section")
+        {
+            var section = new Section();
+            foreach (var child in model.Children) section.Blocks.Add(DeserializeBlock(child));
+            return section;
+        }
         if (model.Kind is "bullet-list" or "numbered-list")
         {
             var list = new List
             {
                 MarkerStyle = model.Kind == "numbered-list" ? TextMarkerStyle.Decimal : TextMarkerStyle.Disc
             };
+            if (model.Children.Count > 0)
+            {
+                foreach (var item in model.Children)
+                {
+                    var listItem = new ListItem();
+                    foreach (var child in item.Children) listItem.Blocks.Add(DeserializeBlock(child));
+                    list.ListItems.Add(listItem);
+                }
+                return list;
+            }
             if (model.Items.Count > 0)
             {
                 foreach (var item in model.Items)
@@ -211,6 +328,10 @@ public sealed class RichTextDocumentService
         }
 
         var result = new Paragraph { FontSize = model.FontSize is > 0 ? model.FontSize : 14 };
+        var headingLevel = model.HeadingLevel is >= 0 and <= 3 ? model.HeadingLevel : 0;
+        DocumentOutline.SetHeadingLevel(result, headingLevel);
+        DocumentOutline.SetIsNavigationPoint(result, model.IsNavigationPoint);
+        DocumentOutline.SetIsCollapsed(result, headingLevel > 0 && model.IsCollapsed);
         if (Enum.TryParse<TextAlignment>(model.Alignment, out var alignment))
         {
             result.TextAlignment = alignment;
@@ -312,6 +433,10 @@ public sealed class RichTextDocumentService
         public string? Alignment { get; set; }
         public double FontSize { get; set; } = 14;
         public double? LineSpacing { get; set; }
+        public int HeadingLevel { get; set; }
+        public bool IsNavigationPoint { get; set; }
+        public bool IsCollapsed { get; set; }
+        public List<BlockModel> Children { get; set; } = new();
         public List<BlockModel> Items { get; set; } = new();
         public List<InlineModel> Inlines { get; set; } = new();
     }

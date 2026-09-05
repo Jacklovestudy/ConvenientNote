@@ -79,6 +79,7 @@
                         <ComboBoxItem Content="标题 2" Tag="22" />
                         <ComboBoxItem Content="标题 3" Tag="18" />
                     </ComboBox>
+                    <Button Style="{StaticResource EditorToolButton}" Click="SetHeadingButton_Click" Content="章节" ToolTip="设为一级章节标题 (Ctrl+Alt+1)，正文 Ctrl+Alt+0" />
                     <ComboBox x:Name="FontSizeComboBox"
                               Width="76"
                               Height="34"
@@ -92,6 +93,7 @@
                         <ComboBoxItem Content="16" Tag="16" />
                         <ComboBoxItem Content="18" Tag="18" />
                         <ComboBoxItem Content="20" Tag="20" />
+                        <ComboBoxItem Content="22" Tag="22" />
                         <ComboBoxItem Content="24" Tag="24" />
                         <ComboBoxItem Content="28" Tag="28" />
                         <ComboBoxItem Content="32" Tag="32" />
@@ -141,6 +143,7 @@
                 <ColumnDefinition Width="260" />
             </Grid.ColumnDefinitions>
             <Border Background="White" CornerRadius="10" Padding="0">
+                <Grid ClipToBounds="True">
                 <RichTextBox x:Name="Editor"
                              Padding="28,24"
                              BorderThickness="0"
@@ -151,6 +154,7 @@
                              HorizontalContentAlignment="Stretch"
                              VerticalContentAlignment="Top"
                              AcceptsTab="True"
+                             IsDocumentEnabled="True"
                              AllowDrop="True"
                              VerticalScrollBarVisibility="Auto"
                              TextChanged="EditorContentChanged"
@@ -158,8 +162,63 @@
                              PreviewKeyDown="Editor_PreviewKeyDown"
                              Drop="Editor_Drop"
                              AutomationProperties.Name="笔记正文" />
+                    <Canvas x:Name="HeadingGutter" Width="26" HorizontalAlignment="Left" ClipToBounds="True" />
+                </Grid>
             </Border>
             <Border Grid.Column="1" Margin="16,0,0,0" Padding="16" Background="White" CornerRadius="10">
+                <TabControl x:Name="SidebarTabs" BorderThickness="0" Background="White">
+                    <TabItem Header="目录">
+                        <Grid Margin="0,12,0,0">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <DockPanel>
+                                <Button DockPanel.Dock="Right" Padding="8,4" Content="查找" Click="FindNextButton_Click" ToolTip="查找下一处 (Enter / F3)" />
+                                <TextBox x:Name="DocumentSearchBox" Margin="0,0,6,0" VerticalContentAlignment="Center" Padding="6" materialDesign:HintAssist.Hint="搜索正文…" ToolTip="搜索整篇正文，包含折叠内容 (Ctrl+F)" AutomationProperties.Name="搜索笔记正文" KeyDown="DocumentSearchBox_KeyDown" />
+                            </DockPanel>
+                            <TextBlock x:Name="OutlineStatusText" Grid.Row="1" Margin="0,6,0,8" TextWrapping="Wrap" Foreground="#475467" FontSize="12" />
+                            <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,8">
+                                <Button x:Name="CollapseAllButton" Content="全部折叠" Padding="7,4" Margin="0,0,6,0" Click="CollapseAllButton_Click" />
+                                <Button x:Name="ExpandAllButton" Content="全部展开" Padding="7,4" Click="ExpandAllButton_Click" />
+                            </StackPanel>
+                            <Grid Grid.Row="3">
+                                <ListBox x:Name="OutlineList" BorderThickness="0" Background="Transparent" ScrollViewer.HorizontalScrollBarVisibility="Disabled" PreviewMouseLeftButtonUp="OutlineList_MouseLeftButtonUp" PreviewKeyDown="OutlineList_KeyDown" AutomationProperties.Name="笔记目录">
+                                    <ListBox.ItemContainerStyle>
+                                        <Style TargetType="ListBoxItem">
+                                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                            <Setter Property="Padding" Value="2,5" />
+                                        </Style>
+                                    </ListBox.ItemContainerStyle>
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid Margin="{Binding Indent}">
+                                                <Grid.ColumnDefinitions><ColumnDefinition Width="24" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                                <Button Content="{Binding Arrow}" Tag="{Binding}" Click="OutlineFoldButton_Click" Visibility="{Binding FoldVisibility}" Padding="0" Width="22" Height="24" Background="Transparent" Foreground="#3F51B5" BorderThickness="0" ToolTip="展开或折叠章节" />
+                                                <TextBlock Grid.Column="1" Text="{Binding Title}" ToolTip="{Binding Title}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Foreground="#172033" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                                <TextBlock x:Name="OutlineEmptyText" Margin="4,12" Text="将知识点开头设为章节标题，&#x0a;即可生成目录并折叠正文。&#x0a;&#x0a;Ctrl+Alt+1  一级标题&#x0a;Ctrl+Alt+2  二级标题&#x0a;Ctrl+Alt+3  三级标题&#x0a;Ctrl+Alt+0  恢复正文" Foreground="#475467" TextWrapping="Wrap" FontSize="12" LineHeight="22" IsHitTestVisible="False" />
+                            </Grid>
+                            <Button x:Name="GenerateSectionsButton" Grid.Row="4" Content="按编号生成章节…" Margin="0,12,0,0" Padding="8,6" Click="FindNumberedHeadingsButton_Click" />
+                            <Border x:Name="NumberedCandidatesPanel" Grid.RowSpan="5" Background="White" Visibility="Collapsed">
+                                <DockPanel>
+                                    <TextBlock DockPanel.Dock="Top" Text="勾选要设为一级章节的段落" TextWrapping="Wrap" Margin="0,0,0,12" Foreground="#172033" />
+                                    <StackPanel DockPanel.Dock="Bottom" Margin="0,12,0,0">
+                                        <Button x:Name="ConfirmSectionsButton" Content="生成所选章节" Click="ConfirmNumberedHeadingsButton_Click" Padding="8,6" />
+                                        <Button Content="取消" Click="CancelNumberedHeadingsButton_Click" Margin="0,6,0,0" Padding="8,6" />
+                                    </StackPanel>
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel x:Name="NumberedCandidatesList" /></ScrollViewer>
+                                </DockPanel>
+                            </Border>
+                        </Grid>
+                    </TabItem>
+                    <TabItem Header="笔记信息">
                 <StackPanel>
                     <TextBlock Text="笔记信息" Foreground="#172033" FontWeight="SemiBold" FontSize="15" />
                     <TextBlock Margin="0,18,0,6" Text="笔记本" Foreground="#667085" FontSize="12" />
@@ -176,6 +235,8 @@
                     <TextBlock Text="Ctrl+S  保存&#x0a;Ctrl+F  搜索&#x0a;Esc  返回笔记墙" Foreground="#475467" FontSize="12" LineHeight="21" />
                     <TextBlock Margin="0,18,0,0" Text="图片可直接粘贴或拖入正文。" TextWrapping="Wrap" Foreground="#667085" FontSize="11" />
                 </StackPanel>
+                    </TabItem>
+                </TabControl>
             </Border>
         </Grid>
 

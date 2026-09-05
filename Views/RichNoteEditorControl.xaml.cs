@@ -42,6 +42,7 @@ public partial class RichNoteEditorControl : UserControl
     public RichNoteEditorControl()
     {
         InitializeComponent();
+        InitializeOutline();
         _saveTimer.Tick += SaveTimer_Tick;
         _saveFeedbackTimer.Tick += SaveFeedbackTimer_Tick;
         DataContextChanged += RichNoteEditorControl_DataContextChanged;
@@ -76,6 +77,7 @@ public partial class RichNoteEditorControl : UserControl
         _isLoading = true;
         _saveTimer.Stop();
         Editor.Document = _viewModel.DocumentService.Load(note.RichContent, note.Content);
+        RestoreSavedFolds();
         UpdateWordCount();
         TagsTextBox.Text = string.Join(", ", note.Tags);
         NotebookComboBox.SelectedItem = _viewModel.AvailableNotebooks.FirstOrDefault(option => option.Id == note.NotebookId);
@@ -87,6 +89,7 @@ public partial class RichNoteEditorControl : UserControl
     private void EditorContentChanged(object sender, TextChangedEventArgs e)
     {
         UpdateWordCount();
+        QueueOutlineRefresh();
         if (_isLoading || _viewModel?.SelectedNote is null)
         {
             return;
@@ -101,7 +104,7 @@ public partial class RichNoteEditorControl : UserControl
             return;
         }
 
-        var text = new TextRange(Editor.Document.ContentStart, Editor.Document.ContentEnd).Text;
+        var text = _outlineDocuments.ExtractPlainText(Editor.Document);
         WordCountText.Text = $"字数：{DocumentWordCounter.Count(text)}";
     }
 
@@ -177,6 +180,7 @@ public partial class RichNoteEditorControl : UserControl
         _saveTimer.Stop();
         try
         {
+            SynchronizeCollapsedFlags();
             await _viewModel.SaveDocumentAsync(Editor.Document);
             return true;
         }
@@ -253,6 +257,7 @@ public partial class RichNoteEditorControl : UserControl
 
     private async void RichNoteEditorControl_PreviewKeyDown(object sender, KeyEventArgs e)
     {
+        if (HandleOutlineKey(e)) { e.Handled = true; return; }
         if (e.Key != Key.S || Keyboard.Modifiers != ModifierKeys.Control)
         {
             return;
@@ -294,6 +299,8 @@ public partial class RichNoteEditorControl : UserControl
 
     private async void Editor_PreviewKeyDown(object sender, KeyEventArgs e)
     {
+        if (e.Key == Key.Enter && Keyboard.Modifiers == ModifierKeys.None && TryEnterAfterHeading()) { e.Handled = true; return; }
+        if (e.Key is Key.Delete or Key.Back or Key.Enter or Key.Tab) ExpandAtEditingBoundary(e.Key);
         if (e.Key == Key.Escape)
         {
             await ReturnToWallAsync();
@@ -308,22 +315,11 @@ public partial class RichNoteEditorControl : UserControl
 
     private void ParagraphStyleComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (!IsLoaded || ParagraphStyleComboBox.SelectedItem is not ComboBoxItem item || !double.TryParse(item.Tag?.ToString(), out var size))
+        if (!IsLoaded || _updatingParagraphStyle || ParagraphStyleComboBox.SelectedItem is not ComboBoxItem)
         {
             return;
         }
-        Editor.BeginChange();
-        try
-        {
-            Editor.Selection.ApplyPropertyValue(TextElement.FontSizeProperty, size);
-            RefreshSelectedParagraphLineHeights();
-        }
-        finally
-        {
-            Editor.EndChange();
-        }
-        RefreshFontSizeSelection();
-        Editor.Focus();
+        SetCurrentHeading(ParagraphStyleComboBox.SelectedIndex);
     }
 
     private void FontSizeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -334,6 +330,7 @@ public partial class RichNoteEditorControl : UserControl
             return;
         }
 
+        ExpandForEditing();
         Editor.BeginChange();
         try
         {
@@ -385,6 +382,7 @@ public partial class RichNoteEditorControl : UserControl
             return false;
         }
 
+        ExpandForEditing();
         foreach (var paragraph in GetSelectedParagraphs())
         {
             ParagraphLineSpacing.Apply(paragraph, ratio);
@@ -400,6 +398,7 @@ public partial class RichNoteEditorControl : UserControl
     {
         RefreshFontSizeSelection();
         RefreshLineSpacingSelection();
+        if (!_changingOutline && IsLoaded) UpdateParagraphStyleSelection();
     }
 
     private void RefreshLineSpacingSelection()
@@ -506,12 +505,14 @@ public partial class RichNoteEditorControl : UserControl
 
     private void StrikethroughButton_Click(object sender, RoutedEventArgs e)
     {
+        ExpandForEditing();
         Editor.Selection.ApplyPropertyValue(Inline.TextDecorationsProperty, TextDecorations.Strikethrough);
         Editor.Focus();
     }
 
     private void TextColorButton_Click(object sender, RoutedEventArgs e)
     {
+        ExpandForEditing();
         _colorIndex = (_colorIndex + 1) % TextColors.Length;
         Editor.Selection.ApplyPropertyValue(TextElement.ForegroundProperty, TextColors[_colorIndex]);
         Editor.Focus();
@@ -567,6 +568,7 @@ public partial class RichNoteEditorControl : UserControl
 
     private async Task InsertImageAsync(string path)
     {
+        ExpandAtEditingBoundary(Key.Enter);
         var operation = _saveOperationGate.TryBegin();
         if (operation is null)
         {
