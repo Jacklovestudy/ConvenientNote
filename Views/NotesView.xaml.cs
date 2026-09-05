@@ -31,7 +31,7 @@ public partial class NotesView : UserControl
         AttachNotesReplacementGate(DataContext);
     }
 
-    public Task<bool> FlushAsync() => EditorControl.SaveNowAsync();
+    public async Task<bool> FlushAsync() => await KnowledgeMemo.SaveChangesAsync() && await EditorControl.SaveNowAsync();
 
     public bool IsEditorOpen => DataContext is NotesViewModel { IsEditorOpen: true };
 
@@ -344,7 +344,7 @@ public partial class NotesView : UserControl
 
         container.Children.Add(new TextBlock
         {
-            Text = "导入将覆盖当前未删除的全部笔记和图片，待办与回收站不受影响。此操作无法撤销。",
+            Text = "导入将覆盖当前未删除的全部笔记和图片，包含右侧知识点便签。待办与回收站不受影响。此操作无法撤销。",
             FontSize = 16,
             FontWeight = FontWeights.SemiBold,
             TextWrapping = TextWrapping.Wrap

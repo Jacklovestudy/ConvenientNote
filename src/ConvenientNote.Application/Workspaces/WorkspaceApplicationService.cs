@@ -134,6 +134,24 @@ public sealed class WorkspaceApplicationService
         await _workspaceRepository.SaveAsync(workspace, cancellationToken);
     }
 
+    public async Task<NoteSnapshot> SaveKnowledgeMemoAsync(WorkspaceId workspaceId, string text,
+        CancellationToken cancellationToken = default)
+    {
+        var workspace = await GetRequiredWorkspaceAsync(workspaceId, cancellationToken);
+        var note = workspace.Notes.Where(n => n.BoardKey == TodoBoardKeys.Notes && !n.IsDeleted &&
+                n.Tags.Contains(KnowledgeMemoMetadata.Tag, StringComparer.OrdinalIgnoreCase))
+            .OrderByDescending(n => n.UpdatedAt).FirstOrDefault();
+        if (note is null)
+        {
+            note = workspace.AddNote(TodoBoardKeys.Notes, "知识点清单", text,
+                new NotePosition(0, 0), new NoteSize(340, 600), "#FFF8B8");
+            note.SetTags([KnowledgeMemoMetadata.Tag]);
+        }
+        else workspace.UpdateRichNote(note.Id, string.Empty, text);
+        await _workspaceRepository.SaveAsync(workspace, cancellationToken);
+        return ToSnapshot(note);
+    }
+
     public async Task MoveNotesAsync(
         WorkspaceId workspaceId,
         IReadOnlyCollection<NotePositionUpdate> positionUpdates,

@@ -94,22 +94,67 @@ public sealed class RichTextDocumentService
     {
         ArgumentNullException.ThrowIfNull(document);
         var text = new StringBuilder();
-        AppendPlainText(document, text);
-        return text.ToString().TrimEnd('\r', '\n');
+        var preservedEnd = 0;
+        AppendPlainText(document, text, ref preservedEnd);
+        while (text.Length > preservedEnd && text[^1] is '\r' or '\n') text.Length--;
+        return text.ToString();
     }
 
-    private static void AppendPlainText(FlowDocument document, StringBuilder text)
+    private static void AppendPlainText(FlowDocument document, StringBuilder text, ref int preservedEnd)
     {
         // Read contiguous visible ranges together: ending individual ranges at a list
         // can duplicate its generated marker, and trimming each block loses blank lines.
         var start = document.ContentStart;
-        foreach (var folded in document.Blocks.OfType<FoldedSection>())
+        foreach (var special in EnumerateEmbeddedBlocks(document.Blocks))
         {
-            text.Append(new TextRange(start, folded.ContentStart).Text);
-            AppendPlainText(folded.HiddenDocument, text);
-            start = folded.NextBlock?.ContentStart ?? document.ContentEnd;
+            text.Append(new TextRange(start, special.ContentStart).Text);
+            if (special is FoldedSection folded)
+                AppendPlainText(folded.HiddenDocument, text, ref preservedEnd);
+            else if (special is CodeBlock code)
+            {
+                text.Append(code.CodeText);
+                preservedEnd = text.Length;
+                text.Append("\r\n");
+            }
+            start = FollowingContentStart(special, document);
         }
-        text.Append(new TextRange(start, document.ContentEnd).Text);
+        // WPF can emit a list marker even for an empty range at ContentEnd when
+        // the final list item contains an unhydrated BlockUIContainer.
+        if (start.CompareTo(document.ContentEnd) < 0)
+            text.Append(new TextRange(start, document.ContentEnd).Text);
+    }
+
+    private static TextPointer FollowingContentStart(Block block, FlowDocument document)
+    {
+        // A range beginning at a last list child's ElementEnd can synthesize the
+        // list marker again when the child has no editor. Resume beyond completed
+        // containers so presentation hydration never affects the stored text.
+        DependencyObject? current = block;
+        while (current is FrameworkContentElement element && current != document)
+        {
+            if (current is Block { NextBlock: { } next }) return next.ContentStart;
+            if (current is ListItem { NextListItem: { } nextItem }) return nextItem.ContentStart;
+            current = element.Parent;
+        }
+        return document.ContentEnd;
+    }
+
+    private static IEnumerable<Block> EnumerateEmbeddedBlocks(BlockCollection blocks)
+    {
+        foreach (var block in blocks)
+        {
+            if (block is CodeBlock or FoldedSection) yield return block;
+            else if (block is Section section)
+                foreach (var child in EnumerateEmbeddedBlocks(section.Blocks)) yield return child;
+            else if (block is List list)
+                foreach (var item in list.ListItems)
+                    foreach (var child in EnumerateEmbeddedBlocks(item.Blocks)) yield return child;
+            else if (block is Table table)
+                foreach (var group in table.RowGroups)
+                    foreach (var row in group.Rows)
+                        foreach (var cell in row.Cells)
+                            foreach (var child in EnumerateEmbeddedBlocks(cell.Blocks)) yield return child;
+        }
     }
 
     public FlowDocument CloneBlocks(IEnumerable<Block> blocks)
@@ -132,7 +177,29 @@ public sealed class RichTextDocumentService
     // The XAML is produced only from our in-memory document, never accepted from external input.
     private static Block ClonePresentationBlock(Block block)
     {
-        var clone = (Block)XamlReader.Parse(XamlWriter.Save(block));
+        Block clone;
+        if (block is CodeBlock code)
+            clone = CopyLocalFormatting(code, new CodeBlock());
+        else if (block is Section section && EnumerateEmbeddedBlocks(section.Blocks).Any())
+        {
+            var sectionClone = CopyLocalFormatting(section, new Section());
+            foreach (var child in DocumentOutline.LogicalBlocks(section.Blocks))
+                sectionClone.Blocks.Add(ClonePresentationBlock(child));
+            clone = sectionClone;
+        }
+        else if (block is List list && list.ListItems.Any(item => EnumerateEmbeddedBlocks(item.Blocks).Any()))
+        {
+            var listClone = CopyLocalFormatting(list, new List());
+            foreach (var item in list.ListItems)
+            {
+                var itemClone = CopyLocalFormatting(item, new ListItem());
+                foreach (var child in DocumentOutline.LogicalBlocks(item.Blocks))
+                    itemClone.Blocks.Add(ClonePresentationBlock(child));
+                listClone.ListItems.Add(itemClone);
+            }
+            clone = listClone;
+        }
+        else clone = (Block)XamlReader.Parse(XamlWriter.Save(block));
         // XamlWriter saves local values; freeze the effective inherited formatting at
         // the snapshot root so it does not adopt the temporary FlowDocument defaults.
         clone.FontFamily = block.FontFamily;
@@ -149,11 +216,27 @@ public sealed class RichTextDocumentService
         return clone;
     }
 
+    private static T CopyLocalFormatting<T>(T source, T target) where T : TextElement
+    {
+        var values = source.GetLocalValueEnumerator();
+        while (values.MoveNext())
+        {
+            var property = values.Current.Property;
+            if (property.ReadOnly || property.Name == "Child") continue;
+            var value = source.GetValue(property);
+            target.SetValue(property, value is Freezable freezable ? freezable.CloneCurrentValue() : value);
+        }
+        target.Resources = source.Resources;
+        return target;
+    }
+
     private static IEnumerable<InlineModel> EnumerateInlines(BlockModel block) =>
         block.Inlines.Concat(block.Items.SelectMany(EnumerateInlines)).Concat(block.Children.SelectMany(EnumerateInlines));
 
     private static BlockModel? SerializeBlock(Block block)
     {
+        if (block is CodeBlock code)
+            return new BlockModel { Kind = "code", CodeText = code.CodeText, CodeLanguage = code.CodeLanguage, WrapCode = code.WrapCode };
         if (block is Paragraph paragraph)
         {
             return new BlockModel
@@ -217,7 +300,8 @@ public sealed class RichTextDocumentService
             yield return model with
             {
                 Underline = model.Underline || underline,
-                Strikethrough = model.Strikethrough || strikethrough
+                Strikethrough = model.Strikethrough || strikethrough,
+                InlineCode = model.InlineCode || inline is InlineCode
             };
         }
     }
@@ -272,6 +356,8 @@ public sealed class RichTextDocumentService
 
     private Block DeserializeBlock(BlockModel model)
     {
+        if (model.Kind == "code")
+            return new CodeBlock { CodeText = model.CodeText ?? string.Empty, CodeLanguage = model.CodeLanguage ?? "C#", WrapCode = model.WrapCode };
         if (model.Kind == "section")
         {
             var section = new Section();
@@ -396,6 +482,7 @@ public sealed class RichTextDocumentService
         {
             result = new Bold(result);
         }
+        if (model.InlineCode) result = new InlineCode(result);
         return result;
     }
 
@@ -429,6 +516,9 @@ public sealed class RichTextDocumentService
 
     private sealed class BlockModel
     {
+        public string? CodeText { get; set; }
+        public string? CodeLanguage { get; set; }
+        public bool WrapCode { get; set; } = true;
         public string Kind { get; set; } = "paragraph";
         public string? Alignment { get; set; }
         public double FontSize { get; set; } = 14;
@@ -449,6 +539,7 @@ public sealed class RichTextDocumentService
         public bool Italic { get; init; }
         public bool Underline { get; init; }
         public bool Strikethrough { get; init; }
+        public bool InlineCode { get; init; }
         public string? Foreground { get; init; }
         public double FontSize { get; init; }
         public double Width { get; init; }

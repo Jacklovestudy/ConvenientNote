@@ -47,6 +47,9 @@ public sealed class MainWindowWorkspaceTransferTests
         markup = markup.Replace(
             "xmlns:local=\"clr-namespace:ConvenientNote\"",
             "xmlns:local=\"clr-namespace:ConvenientNote;assembly=ConvenientNote\"");
+        markup = markup.Replace(
+            "xmlns:views=\"clr-namespace:ConvenientNote.Views\"",
+            "xmlns:views=\"clr-namespace:ConvenientNote.Views;assembly=ConvenientNote\"");
         markup = markup.Replace("Style=\"{StaticResource TitleBarButtonStyle}\"", string.Empty)
             .Replace("Style=\"{StaticResource TitleBarCloseButtonStyle}\"", string.Empty);
         markup = Regex.Replace(

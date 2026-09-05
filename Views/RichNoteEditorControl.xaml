@@ -80,6 +80,8 @@
                         <ComboBoxItem Content="标题 3" Tag="18" />
                     </ComboBox>
                     <Button Style="{StaticResource EditorToolButton}" Click="SetHeadingButton_Click" Content="章节" ToolTip="设为一级章节标题 (Ctrl+Alt+1)，正文 Ctrl+Alt+0" />
+                    <Button x:Name="InsertCodeBlockButton" Style="{StaticResource EditorToolButton}" Click="InsertCodeBlockButton_Click" Content="代码块" ToolTip="插入 C# 代码块；选中文字可转换为代码块" />
+                    <Button x:Name="InlineCodeButton" Style="{StaticResource EditorToolButton}" Click="InlineCodeButton_Click" Content="行内代码" ToolTip="将选中的同段文字设为行内代码，再点一次取消" />
                     <ComboBox x:Name="FontSizeComboBox"
                               Width="76"
                               Height="34"
@@ -131,8 +133,8 @@
                     <Separator Margin="8,0" />
                     <Button Style="{StaticResource EditorToolButton}" Click="TextColorButton_Click" ToolTip="切换文字颜色"><materialDesign:PackIcon Kind="FormatColorText" Width="20" Height="20" Foreground="#3F51B5" /></Button>
                     <Button Style="{StaticResource EditorToolButton}" Click="InsertImageButton_Click" ToolTip="插入本地图片"><materialDesign:PackIcon Kind="ImagePlus" Width="20" Height="20" /></Button>
-                    <Button Style="{StaticResource EditorToolButton}" Command="{x:Static ApplicationCommands.Undo}" CommandTarget="{Binding ElementName=Editor}" ToolTip="撤销 (Ctrl+Z)"><materialDesign:PackIcon Kind="Undo" Width="20" Height="20" /></Button>
-                    <Button Style="{StaticResource EditorToolButton}" Command="{x:Static ApplicationCommands.Redo}" CommandTarget="{Binding ElementName=Editor}" ToolTip="重做 (Ctrl+Y)"><materialDesign:PackIcon Kind="Redo" Width="20" Height="20" /></Button>
+                    <Button x:Name="UndoEditorButton" Style="{StaticResource EditorToolButton}" Click="UndoEditorButton_Click" ToolTip="撤销 (Ctrl+Z)"><materialDesign:PackIcon Kind="Undo" Width="20" Height="20" /></Button>
+                    <Button x:Name="RedoEditorButton" Style="{StaticResource EditorToolButton}" Click="RedoEditorButton_Click" ToolTip="重做 (Ctrl+Y)"><materialDesign:PackIcon Kind="Redo" Width="20" Height="20" /></Button>
                 </StackPanel>
             </ScrollViewer>
         </Border>
@@ -143,7 +145,9 @@
                 <ColumnDefinition Width="260" />
             </Grid.ColumnDefinitions>
             <Border Background="White" CornerRadius="10" Padding="0">
-                <Grid ClipToBounds="True">
+                <Grid x:Name="EditorZoomViewport" ClipToBounds="True" PreviewMouseWheel="EditorZoomViewport_PreviewMouseWheel">
+                <Grid x:Name="EditorZoomSurface">
+                    <Grid.LayoutTransform><ScaleTransform x:Name="EditorZoomTransform" ScaleX="1" ScaleY="1" /></Grid.LayoutTransform>
                 <RichTextBox x:Name="Editor"
                              Padding="28,24"
                              BorderThickness="0"
@@ -163,6 +167,7 @@
                              Drop="Editor_Drop"
                              AutomationProperties.Name="笔记正文" />
                     <Canvas x:Name="HeadingGutter" Width="26" HorizontalAlignment="Left" ClipToBounds="True" />
+                </Grid>
                 </Grid>
             </Border>
             <Border Grid.Column="1" Margin="16,0,0,0" Padding="16" Background="White" CornerRadius="10">
@@ -277,12 +282,18 @@
                 Background="White"
                 BorderBrush="#DFE4EA"
                 BorderThickness="0,1,0,0">
+            <DockPanel>
+                <Button x:Name="ResetZoomButton" DockPanel.Dock="Right" Content="100%" Click="ResetZoomButton_Click"
+                        ToolTip="Ctrl + 鼠标滚轮缩放正文（50%–200%），点击恢复 100%"
+                        AutomationProperties.Name="正文缩放，点击恢复百分之百"
+                        Background="Transparent" Foreground="#475467" BorderThickness="0" Padding="8,0" MinWidth="62" />
             <TextBlock x:Name="WordCountText"
                        VerticalAlignment="Center"
                        Foreground="#475467"
                        FontSize="12"
                        Text="字数：0"
                        AutomationProperties.Name="正文字数" />
+            </DockPanel>
         </Border>
     </Grid>
 </UserControl>

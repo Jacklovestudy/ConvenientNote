@@ -12,7 +12,7 @@ using Prism.Navigation.Regions;
 
 namespace ConvenientNote.ViewModels;
 
-public sealed class NotesViewModel : BindableBase, INavigationAware
+public sealed partial class NotesViewModel : BindableBase, INavigationAware
 {
     private readonly WorkspaceApplicationService _workspaceService;
     private readonly RichTextDocumentService _documentService;
@@ -206,7 +206,7 @@ public sealed class NotesViewModel : BindableBase, INavigationAware
         {
         if (_workspaceId is { } workspaceId)
         {
-            await _workspaceService.MoveNoteAsync(workspaceId, note.Id, note.X, note.Y);
+            await SerializeMutationAsync(() => _workspaceService.MoveNoteAsync(workspaceId, note.Id, note.X, note.Y));
         }
         }
     }
@@ -219,9 +219,10 @@ public sealed class NotesViewModel : BindableBase, INavigationAware
     {
         var workspace = await _workspaceService.GetOrCreateDefaultWorkspaceAsync();
         _workspaceId = workspace.Id;
+        LoadKnowledgeMemo(workspace);
         _allNotes.Clear();
         _allNotes.AddRange(workspace.Notes
-            .Where(static note => note.BoardKey == TodoBoardKeys.Notes && !note.IsDeleted)
+            .Where(static note => note.BoardKey == TodoBoardKeys.Notes && !note.IsDeleted && !KnowledgeMemoMetadata.IsMemo(note))
             .Select(static note => new NoteCardViewModel(note)));
         RefreshTags();
         RefreshFilteredNotes();
@@ -248,7 +249,7 @@ public sealed class NotesViewModel : BindableBase, INavigationAware
         var index = _allNotes.Count;
         var x = 32 + (index % 4) * 304;
         var y = 32 + (index / 4) * 204;
-        var snapshot = await _workspaceService.CreateNoteAsync(workspaceId, x, y, "新笔记", TodoBoardKeys.Notes);
+        var snapshot = await SerializeMutationAsync(() => _workspaceService.CreateNoteAsync(workspaceId, x, y, "新笔记", TodoBoardKeys.Notes));
         var note = new NoteCardViewModel(snapshot);
         _allNotes.Add(note);
         RefreshFilteredNotes();
@@ -277,7 +278,7 @@ public sealed class NotesViewModel : BindableBase, INavigationAware
         {
         if (SelectedNote is not { } note || _workspaceId is not { } workspaceId) return;
         note.IsPinned = !note.IsPinned;
-        await _workspaceService.SetNotePinnedAsync(workspaceId, note.Id, note.IsPinned);
+        await SerializeMutationAsync(() => _workspaceService.SetNotePinnedAsync(workspaceId, note.Id, note.IsPinned));
         RefreshFilteredNotes();
         }
     }
@@ -293,7 +294,7 @@ public sealed class NotesViewModel : BindableBase, INavigationAware
         {
         if (SelectedNote is not { } note || _workspaceId is not { } workspaceId) return;
         note.IsFavorite = !note.IsFavorite;
-        await _workspaceService.SetNoteFavoriteAsync(workspaceId, note.Id, note.IsFavorite);
+        await SerializeMutationAsync(() => _workspaceService.SetNoteFavoriteAsync(workspaceId, note.Id, note.IsFavorite));
         }
     }
 
@@ -307,7 +308,7 @@ public sealed class NotesViewModel : BindableBase, INavigationAware
         using (operation)
         {
         if (SelectedNote is not { } note || _workspaceId is not { } workspaceId) return;
-        await _workspaceService.MoveNoteToTrashAsync(workspaceId, note.Id);
+        await SerializeMutationAsync(() => _workspaceService.MoveNoteToTrashAsync(workspaceId, note.Id));
         _allNotes.Remove(note);
         SelectedNote = null;
         IsEditorOpen = false;

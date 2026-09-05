@@ -13,6 +13,8 @@ public partial class RichNoteEditorControl
     private bool _changingOutline;
     private bool _updatingParagraphStyle;
     private bool _outlineRefreshQueued;
+    private bool _headingPositionsDirty = true;
+    private bool _headingPositionUpdateQueued;
     private readonly RichTextDocumentService _outlineDocuments = new();
     private readonly List<Button> _headingButtons = new();
     private string _lastFindQuery = "";
@@ -37,13 +39,27 @@ public partial class RichNoteEditorControl
 
     private void InitializeOutline()
     {
-        Editor.AddHandler(ScrollViewer.ScrollChangedEvent, new ScrollChangedEventHandler((_, _) => UpdateHeadingPositions()));
-        Editor.LayoutUpdated += (_, _) => UpdateHeadingPositions();
+        Editor.AddHandler(ScrollViewer.ScrollChangedEvent, new ScrollChangedEventHandler((_, _) => QueueHeadingPositionUpdate()));
+        Editor.SizeChanged += (_, _) => QueueHeadingPositionUpdate();
+        Editor.Loaded += (_, _) => QueueHeadingPositionUpdate();
+        // LayoutUpdated is global to the dispatcher: drawer animation and other
+        // unrelated controls raise it too. Only retry work invalidated by the editor.
+        Editor.LayoutUpdated += (_, _) =>
+        {
+            if (_headingPositionsDirty) UpdateHeadingPositions();
+        };
         CommandManager.AddPreviewExecutedHandler(Editor, Editor_PreviewExecuted);
-        Editor.PreviewTextInput += (_, _) => ExpandForEditing();
-        DataObject.AddPastingHandler(Editor, (_, _) => ExpandForEditing());
+        Editor.PreviewTextInput += (_, e) =>
+        {
+            if (FindCodeBlockView(e.OriginalSource as DependencyObject) is null) ExpandForEditing();
+        };
+        DataObject.AddPastingHandler(Editor, (_, e) =>
+        {
+            if (FindCodeBlockView(e.OriginalSource as DependencyObject) is null) ExpandForEditing();
+        });
         Editor.PreviewMouseMove += (_, e) =>
         {
+            if (FindCodeBlockView(e.OriginalSource as DependencyObject) is not null) return;
             // A drag can otherwise transfer only the presentation placeholder.
             if (e.LeftButton == MouseButtonState.Pressed && !Editor.Selection.IsEmpty)
                 ExpandForEditing();
@@ -104,9 +120,25 @@ public partial class RichNoteEditorControl
         }
     }
 
+    private void QueueHeadingPositionUpdate()
+    {
+        _headingPositionsDirty = true;
+        if (_headingPositionUpdateQueued) return;
+        _headingPositionUpdateQueued = true;
+        Dispatcher.BeginInvoke(DispatcherPriority.Render, new Action(() =>
+        {
+            _headingPositionUpdateQueued = false;
+            if (_headingPositionsDirty) UpdateHeadingPositions();
+        }));
+    }
+
     private void UpdateHeadingPositions()
     {
+        // Preserve retries when called before document reflow has finished (and
+        // allow explicit callers such as zoom/outline refresh to invalidate it).
+        _headingPositionsDirty = true;
         if (_changingOutline || !Editor.IsLoaded || !Editor.IsMeasureValid || !Editor.IsArrangeValid) return;
+        _headingPositionsDirty = false;
         Paragraph? active = null;
         foreach (var button in _headingButtons)
         {
@@ -251,6 +283,7 @@ public partial class RichNoteEditorControl
 
     private void Editor_PreviewExecuted(object sender, ExecutedRoutedEventArgs e)
     {
+        if (FindCodeBlockView(e.OriginalSource as DependencyObject) is not null) return;
         if (e.Command == ApplicationCommands.Undo || e.Command == ApplicationCommands.Redo) return;
         if (e.Command == EditingCommands.EnterParagraphBreak && TryEnterAfterHeading()) { e.Handled = true; return; }
         if (e.Command == EditingCommands.EnterParagraphBreak) ExpandAtEditingBoundary(Key.Enter);
@@ -262,6 +295,7 @@ public partial class RichNoteEditorControl
             return;
         }
         ExpandForEditing();
+        if (TryCopyCodeSelection(e)) return;
     }
 
     private bool TryEnterAfterHeading()
@@ -460,34 +494,7 @@ public partial class RichNoteEditorControl
         if (e.Key == Key.Enter) { FindInDocument(DocumentSearchBox.Text); e.Handled = true; }
     }
 
-    internal bool FindInDocument(string query)
-    {
-        if (string.IsNullOrWhiteSpace(query)) { OutlineStatusText.Text = "输入要查找的正文内容"; return false; }
-        var paragraphs = LogicalParagraphs(Editor.Document.Blocks).ToList();
-        var matches = new List<(int Paragraph, int Occurrence)>();
-        for (var i = 0; i < paragraphs.Count; i++)
-        {
-            var count = FindParagraphMatches(paragraphs[i], query).Count;
-            for (var j = 0; j < count; j++) matches.Add((i, j));
-        }
-        if (matches.Count == 0) { OutlineStatusText.Text = "未找到匹配内容"; return false; }
-        _lastFindIndex = query == _lastFindQuery ? (_lastFindIndex + 1) % matches.Count : 0;
-        _lastFindQuery = query;
-        var location = matches[_lastFindIndex];
-        while (true)
-        {
-            var target = LogicalParagraphs(Editor.Document.Blocks).ElementAt(location.Paragraph);
-            var parentFold = Editor.Document.Blocks.OfType<FoldedSection>().FirstOrDefault(f => LogicalParagraphs(f.HiddenDocument.Blocks).Contains(target));
-            if (parentFold is null) break;
-            OutlineChange(() => ExpandSectionCore(parentFold, true));
-            if (parentFold.Parent == Editor.Document) return false;
-        }
-        var paragraph = LogicalParagraphs(Editor.Document.Blocks).ElementAt(location.Paragraph);
-        var match = FindParagraphMatches(paragraph, query)[location.Occurrence];
-        Editor.Focus(); Editor.Selection.Select(match.Start, match.End); paragraph.BringIntoView();
-        OutlineStatusText.Text = $"第 {_lastFindIndex + 1} / {matches.Count} 处匹配";
-        return true;
-    }
+    internal bool FindInDocument(string query) => FindTextOrCode(query);
 
     private static IEnumerable<Paragraph> LogicalParagraphs(BlockCollection blocks)
     {

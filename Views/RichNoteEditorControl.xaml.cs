@@ -43,6 +43,7 @@ public partial class RichNoteEditorControl : UserControl
     {
         InitializeComponent();
         InitializeOutline();
+        InitializeCodeSupport();
         _saveTimer.Tick += SaveTimer_Tick;
         _saveFeedbackTimer.Tick += SaveFeedbackTimer_Tick;
         DataContextChanged += RichNoteEditorControl_DataContextChanged;
@@ -78,6 +79,7 @@ public partial class RichNoteEditorControl : UserControl
         _saveTimer.Stop();
         Editor.Document = _viewModel.DocumentService.Load(note.RichContent, note.Content);
         RestoreSavedFolds();
+        AttachCodeBlockViews();
         UpdateWordCount();
         TagsTextBox.Text = string.Join(", ", note.Tags);
         NotebookComboBox.SelectedItem = _viewModel.AvailableNotebooks.FirstOrDefault(option => option.Id == note.NotebookId);
@@ -88,6 +90,8 @@ public partial class RichNoteEditorControl : UserControl
 
     private void EditorContentChanged(object sender, TextChangedEventArgs e)
     {
+        if (_attachingCodeViews) return;
+        AttachCodeBlockViews();
         UpdateWordCount();
         QueueOutlineRefresh();
         if (_isLoading || _viewModel?.SelectedNote is null)
@@ -257,7 +261,8 @@ public partial class RichNoteEditorControl : UserControl
 
     private async void RichNoteEditorControl_PreviewKeyDown(object sender, KeyEventArgs e)
     {
-        if (HandleOutlineKey(e)) { e.Handled = true; return; }
+        var insideCode = FindCodeBlockView(e.OriginalSource as DependencyObject) is not null;
+        if ((!insideCode || e.Key == Key.F || e.Key == Key.F3) && HandleOutlineKey(e)) { e.Handled = true; return; }
         if (e.Key != Key.S || Keyboard.Modifiers != ModifierKeys.Control)
         {
             return;
@@ -299,6 +304,7 @@ public partial class RichNoteEditorControl : UserControl
 
     private async void Editor_PreviewKeyDown(object sender, KeyEventArgs e)
     {
+        if (FindCodeBlockView(e.OriginalSource as DependencyObject) is not null) return;
         if (e.Key == Key.Enter && Keyboard.Modifiers == ModifierKeys.None && TryEnterAfterHeading()) { e.Handled = true; return; }
         if (e.Key is Key.Delete or Key.Back or Key.Enter or Key.Tab) ExpandAtEditingBoundary(e.Key);
         if (e.Key == Key.Escape)

@@ -26,7 +26,7 @@ namespace ConvenientNote.Tests.Views;
 
 public sealed class NotesTransferTests
 {
-    private const string ImportWarning = "导入将覆盖当前未删除的全部笔记和图片，待办与回收站不受影响。此操作无法撤销。";
+    private const string ImportWarning = "导入将覆盖当前未删除的全部笔记和图片，包含右侧知识点便签。待办与回收站不受影响。此操作无法撤销。";
 
     [Fact]
     public void NotesToolbarOwnsOneCompactImportExportMenuImmediatelyBeforeNewNote()
@@ -269,7 +269,7 @@ public sealed class NotesTransferTests
 
                 Assert.True(saveCountWhenSelected > 0);
                 Assert.True(File.Exists(destination));
-                Assert.Equal(["导出完成，共导出 1 条笔记"], messages);
+                Assert.Equal(["导出完成，共导出 2 条笔记"], messages);
                 Assert.False(view.TransferInProgress);
             }
             finally
@@ -327,7 +327,9 @@ public sealed class NotesTransferTests
                 var notesEntry = Assert.Single(archive.Entries, entry => entry.FullName == "notes.json");
                 await using var notesStream = notesEntry.Open();
                 var exportedDocument = await NotesBackupSerializer.ReadDocumentAsync(notesStream);
-                var exportedNote = Assert.Single(exportedDocument.Notes);
+                var exportedNote = Assert.Single(exportedDocument.Notes, n => !n.Tags.Contains(KnowledgeMemoMetadata.Tag));
+                var exportedMemo = Assert.Single(exportedDocument.Notes, n => n.Tags.Contains(KnowledgeMemoMetadata.Tag));
+                Assert.Equal(KnowledgeChecklist.DefaultText, exportedMemo.Content);
                 var mediaEntry = Assert.Single(
                     archive.Entries,
                     entry => entry.FullName == $"media/{note.Id.Value:N}/snapshot.png");
@@ -344,7 +346,7 @@ public sealed class NotesTransferTests
                 Assert.Equal([1, 3, 5, 7], copiedMedia.ToArray());
                 Assert.True(view.IsEnabled);
                 Assert.False(view.IsNotesMutationSealed);
-                Assert.Equal(["导出完成，共导出 1 条笔记"], messages);
+                Assert.Equal(["导出完成，共导出 2 条笔记"], messages);
 
                 await viewModel.SaveDocumentAsync(laterDocument);
                 Assert.True(repository.SaveCount > savesBeforeAttempt);

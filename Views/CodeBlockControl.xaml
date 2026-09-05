@@ -1,0 +1,23 @@
+<UserControl x:Class="ConvenientNote.Views.CodeBlockControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:avalon="http://icsharpcode.net/sharpdevelop/avalonedit">
+    <Border Background="#F6F8FB" BorderBrush="#DFE4EA" BorderThickness="1" CornerRadius="8" Padding="12,8">
+        <DockPanel>
+            <Grid DockPanel.Dock="Top" Margin="0,0,0,8">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                <ComboBox x:Name="LanguageBox" Width="95" HorizontalAlignment="Left" SelectedIndex="0" SelectionChanged="LanguageBox_SelectionChanged" ToolTip="代码语言" AutomationProperties.Name="代码语言">
+                    <ComboBoxItem Content="C#" Tag="C#"/>
+                    <ComboBoxItem Content="纯文本" Tag="Text"/>
+                </ComboBox>
+                <CheckBox x:Name="WrapCheckBox" Grid.Column="1" Content="自动换行" Margin="12,0" VerticalAlignment="Center" IsChecked="True" Checked="WrapCheckBox_Changed" Unchecked="WrapCheckBox_Changed" Foreground="#475467" FontSize="12"/>
+                <Button x:Name="CopyCodeButton" Grid.Column="2" Content="复制代码" Click="CopyCodeButton_Click" Padding="8,3" Background="Transparent" Foreground="#3F51B5" BorderThickness="0" FontSize="12"/>
+            </Grid>
+            <TextBlock DockPanel.Dock="Bottom" Text="Esc / Ctrl+Enter 返回正文" FontSize="11" Foreground="#596579" Margin="0,6,0,0"/>
+            <avalon:TextEditor x:Name="CodeEditor" FontFamily="Consolas" FontSize="14" Background="Transparent" Foreground="#172033"
+                               ShowLineNumbers="True" LineNumbersForeground="#68758A" WordWrap="True"
+                               Padding="0,5" BorderThickness="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
+                               TextChanged="CodeEditor_TextChanged" PreviewKeyDown="CodeEditor_PreviewKeyDown" AutomationProperties.Name="代码正文"/>
+        </DockPanel>
+    </Border>
+</UserControl>
