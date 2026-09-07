@@ -22,4 +22,6 @@ public sealed record NoteSnapshot(
     bool IsFavorite,
     bool IsDeleted,
     DateTimeOffset CreatedAt,
-    DateTimeOffset UpdatedAt);
+    DateTimeOffset UpdatedAt,
+    DateTime? PlannedDate = null,
+    DateTimeOffset? CompletedAt = null);

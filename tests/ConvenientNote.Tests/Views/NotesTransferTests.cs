@@ -693,7 +693,7 @@ public sealed class NotesTransferTests
 
     private static UserControl LoadNotesMarkup()
     {
-        var markup = File.ReadAllText(FindSourceFile(Path.Combine("Views", "NotesView.xaml")));
+        var markup = File.ReadAllText(FindSourceFile(Path.Combine("Features", "Notes", "NotesView.xaml")));
         markup = markup.Replace(
             "xmlns:views=\"clr-namespace:ConvenientNote.Views\"",
             "xmlns:views=\"clr-namespace:ConvenientNote.Views;assembly=ConvenientNote\"");

@@ -194,7 +194,7 @@ public sealed class SqliteWorkspaceRepository : IWorkspaceRepository
         await EnsureNoteBoardKeyColumnAsync(context, cancellationToken);
         await EnsureNotePriorityColumnAsync(context, cancellationToken);
         await EnsureRichNoteColumnsAsync(context, cancellationToken);
-        await TryImportFromJsonAsync(context, cancellationToken);
+        await TryImportFromJsonAsync(context, Path.Combine(Path.GetDirectoryName(Path.GetFullPath(_databasePath))!, "workspaces.json"), cancellationToken);
         _databaseInitialized = true;
     }
 
@@ -210,7 +210,9 @@ public sealed class SqliteWorkspaceRepository : IWorkspaceRepository
             ["TagsJson"] = "ALTER TABLE \"Notes\" ADD COLUMN \"TagsJson\" TEXT NOT NULL DEFAULT '[]';",
             ["IsPinned"] = "ALTER TABLE \"Notes\" ADD COLUMN \"IsPinned\" INTEGER NOT NULL DEFAULT 0;",
             ["IsFavorite"] = "ALTER TABLE \"Notes\" ADD COLUMN \"IsFavorite\" INTEGER NOT NULL DEFAULT 0;",
-            ["IsDeleted"] = "ALTER TABLE \"Notes\" ADD COLUMN \"IsDeleted\" INTEGER NOT NULL DEFAULT 0;"
+            ["IsDeleted"] = "ALTER TABLE \"Notes\" ADD COLUMN \"IsDeleted\" INTEGER NOT NULL DEFAULT 0;",
+            ["PlannedDate"] = "ALTER TABLE \"Notes\" ADD COLUMN \"PlannedDate\" TEXT NULL;",
+            ["CompletedAt"] = "ALTER TABLE \"Notes\" ADD COLUMN \"CompletedAt\" TEXT NULL;"
         };
 
         foreach (var (name, command) in commands)
@@ -304,17 +306,13 @@ public sealed class SqliteWorkspaceRepository : IWorkspaceRepository
 
     private static async Task TryImportFromJsonAsync(
         ConvenientNoteDbContext context,
+        string jsonPath,
         CancellationToken cancellationToken)
     {
         if (await context.Workspaces.AnyAsync(cancellationToken))
         {
             return;
         }
-
-        var jsonPath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "ConvenientNote",
-            "workspaces.json");
 
         if (!File.Exists(jsonPath))
         {
@@ -353,7 +351,9 @@ public sealed class SqliteWorkspaceRepository : IWorkspaceRepository
             DeserializeTags(note.TagsJson),
             note.IsPinned,
             note.IsFavorite,
-            note.IsDeleted));
+            note.IsDeleted,
+            note.PlannedDate,
+            note.CompletedAt));
 
         return new Workspace(
             new WorkspaceId(entity.Id),
@@ -412,6 +412,8 @@ public sealed class SqliteWorkspaceRepository : IWorkspaceRepository
         entity.Color = note.Color;
         entity.ZIndex = note.ZIndex;
         entity.IsCompleted = note.IsCompleted;
+        entity.PlannedDate = note.PlannedDate;
+        entity.CompletedAt = note.CompletedAt;
         entity.CreatedAt = note.CreatedAt;
         entity.UpdatedAt = note.UpdatedAt;
     }

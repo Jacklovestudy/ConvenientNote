@@ -13,9 +13,10 @@ namespace ConvenientNote.ViewModels
                 weatherService,
                 TodoBoardKeys.DayTodo,
                 TodoBoardFilter.Active,
-                "Day Todo",
+                "今日待办",
                 "今天要处理的待办",
-                true)
+                true,
+                filterByDate: true)
         {
         }
     }

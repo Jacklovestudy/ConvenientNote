@@ -40,6 +40,10 @@ public sealed class NoteEntity
 
     public bool IsCompleted { get; set; }
 
+    public DateTime? PlannedDate { get; set; }
+
+    public DateTimeOffset? CompletedAt { get; set; }
+
     public DateTimeOffset CreatedAt { get; set; }
 
     public DateTimeOffset UpdatedAt { get; set; }

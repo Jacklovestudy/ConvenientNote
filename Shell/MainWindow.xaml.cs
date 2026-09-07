@@ -17,7 +17,59 @@ namespace ConvenientNote
         private readonly DeferredWindowCloseCoordinator _closeCoordinator = new();
         private readonly WorkspaceTransferRequestGate _workspaceTransferRequestGate;
         private bool _isNavigationPending;
+        private bool _closeRequestInProgress;
         private HwndSource? _windowSource;
+        private Rect _fullBounds;
+        private WindowState _fullState;
+        private bool _switchingLayout;
+        public bool IsCompactCalendar => CompactLayout.Visibility == Visibility.Visible;
+
+        public void InitializeCompactCalendar(ConvenientNote.ViewModels.ScheduleViewModel calendar)
+        {
+            calendar.DesktopModeRequested += async (_, _) => await EnterCompactCalendarAsync(calendar);
+        }
+
+        public async Task EnterCompactCalendarAsync(ConvenientNote.ViewModels.ScheduleViewModel calendar)
+        {
+            if (IsCompactCalendar || _switchingLayout) return;
+            _switchingLayout = true;
+            try
+            {
+                if (!await PrepareForDesktopAsync()) return;
+                _fullState = WindowState;
+                _fullBounds = WindowState == WindowState.Normal ? new Rect(Left, Top, Width, Height) : RestoreBounds;
+                WindowState = WindowState.Normal;
+                MinWidth = 360;
+                MinHeight = 540;
+                Width = 440;
+                Height = 620;
+                FullLayout.Visibility = Visibility.Collapsed;
+                FullBranding.Visibility = Visibility.Collapsed;
+                CompactBranding.Visibility = Visibility.Visible;
+                CompactCalendarContent.Content = new CalendarPanel { IsCompact = true, DataContext = calendar };
+                CompactLayout.Visibility = Visibility.Visible;
+            }
+            finally { _switchingLayout = false; }
+        }
+
+        public void ExitCompactCalendar()
+        {
+            if (!IsCompactCalendar) return;
+            CompactLayout.Visibility = Visibility.Collapsed;
+            CompactCalendarContent.Content = null;
+            FullLayout.Visibility = Visibility.Visible;
+            FullBranding.Visibility = Visibility.Visible;
+            CompactBranding.Visibility = Visibility.Collapsed;
+            MinWidth = 960;
+            MinHeight = 620;
+            Left = _fullBounds.Left;
+            Top = _fullBounds.Top;
+            Width = _fullBounds.Width;
+            Height = _fullBounds.Height;
+            WindowState = _fullState;
+        }
+
+        private void ExitCompactCalendar_Click(object sender, RoutedEventArgs e) => ExitCompactCalendar();
         public MainWindow(WorkspaceTransferRequestGate workspaceTransferRequestGate)
         {
             _workspaceTransferRequestGate = workspaceTransferRequestGate;
@@ -172,11 +224,29 @@ namespace ConvenientNote
                 return;
             }
 
-            var notesView = FindNotesView();
-            if (_closeCoordinator.CanClose || notesView is null)
+            // The deferred close after a successful save has already been confirmed.
+            if (_closeCoordinator.CanClose)
             {
                 return;
             }
+
+            if (_closeRequestInProgress)
+            {
+                e.Cancel = true;
+                return;
+            }
+
+            _closeRequestInProgress = true;
+            if (MessageBox.Show(this, "确定退出 Convenient Note 吗？", "退出确认",
+                    MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No) != MessageBoxResult.Yes)
+            {
+                _closeRequestInProgress = false;
+                e.Cancel = true;
+                return;
+            }
+
+            var notesView = FindNotesView();
+            if (notesView is null) return;
 
             e.Cancel = true;
             if (!_closeCoordinator.TryBeginFlush())
@@ -193,10 +263,19 @@ namespace ConvenientNote
             {
             }
 
+            if (!saved) _closeRequestInProgress = false;
+
             _closeCoordinator.CompleteFlush(
                 saved,
                 close => _ = Dispatcher.BeginInvoke(close),
                 Close);
+        }
+
+        public async Task<bool> PrepareForDesktopAsync()
+        {
+            if (WorkspaceTransferCloseGuard.ShouldCancelWindowClose(_workspaceTransferRequestGate)) return false;
+            var notesView = FindNotesView();
+            return notesView is null || await notesView.FlushAsync();
         }
 
         private NotesView? FindNotesView()

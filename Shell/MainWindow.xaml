@@ -15,7 +15,7 @@
         Width="1180"
         MinHeight="620"
         MinWidth="960"
-        Icon="Resources/AppIcon.ico"
+        Icon="/ConvenientNote;component/Resources/AppIcon.ico"
         WindowStartupLocation="CenterScreen"
         WindowStyle="None"
         ResizeMode="CanResize"
@@ -45,7 +45,7 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <StackPanel x:Name="FullBranding" Orientation="Horizontal" VerticalAlignment="Center">
                     <materialDesign:PackIcon Kind="NoteTextOutline"
                                              Width="22"
                                              Height="22"
@@ -58,6 +58,7 @@
                                FontSize="14"
                                FontWeight="SemiBold" />
                 </StackPanel>
+                <TextBlock x:Name="CompactBranding" Text="日历" Foreground="White" VerticalAlignment="Center" Visibility="Collapsed" />
 
                 <StackPanel Grid.Column="2"
                             Orientation="Horizontal"
@@ -88,7 +89,7 @@
             </Grid>
         </materialDesign:ColorZone>
 
-        <views:NavigationDrawerHost Grid.Row="1"
+        <views:NavigationDrawerHost x:Name="FullLayout" Grid.Row="1"
                                    OpenMode="Modal"
                                    IsLeftDrawerOpen="{Binding IsNavigationExpanded, Mode=TwoWay}"
                                    LeftDrawerCloseOnClickAway="True"
@@ -231,5 +232,11 @@
                 </Button>
             </Grid>
         </views:NavigationDrawerHost>
+        <Grid x:Name="CompactLayout" Grid.Row="1" Visibility="Collapsed">
+            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+            <Button Content="返回完整界面" HorizontalAlignment="Right" Margin="8,4"
+                    Click="ExitCompactCalendar_Click" />
+            <ContentControl x:Name="CompactCalendarContent" Grid.Row="1" />
+        </Grid>
     </Grid>
 </Window>

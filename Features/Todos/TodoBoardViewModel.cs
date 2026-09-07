@@ -33,6 +33,7 @@ namespace ConvenientNote.ViewModels
         private readonly OpenMeteoWeatherService _weatherService;
         private readonly string _boardKey;
         private readonly TodoBoardFilter _filter;
+        private readonly bool _filterByDate;
         private readonly List<CanvasTodoViewModel> _allTodoItems = new();
         private readonly HashSet<NoteId> _deletingTodoIds = new();
         private WorkspaceId? _currentWorkspaceId;
@@ -59,12 +60,14 @@ namespace ConvenientNote.ViewModels
             TodoBoardFilter filter,
             string viewTitle,
             string viewDescription,
-            bool canAddTodo)
+            bool canAddTodo,
+            bool filterByDate = false)
         {
             _workspaceApplicationService = workspaceApplicationService;
             _weatherService = weatherService;
             _boardKey = boardKey;
             _filter = filter;
+            _filterByDate = filterByDate;
             ViewTitle = viewTitle;
             ViewDescription = viewDescription;
             CanAddTodo = canAddTodo;
@@ -397,7 +400,9 @@ namespace ConvenientNote.ViewModels
                 ? InitialTodoOffset
                 : latestTodo.X + latestTodo.Width + TodoHorizontalGap;
             var y = latestTodo?.Y ?? InitialTodoOffset;
-            var note = await _workspaceApplicationService.CreateNoteAsync(workspaceId, x, y, title, _boardKey);
+            var note = _filterByDate
+                ? await _workspaceApplicationService.CreateScheduledTodoAsync(workspaceId, title, _selectedDate)
+                : await _workspaceApplicationService.CreateNoteAsync(workspaceId, x, y, title, _boardKey);
 
             _allTodoItems.Add(CreateTodoViewModel(note));
             QuickAddTitle = string.Empty;
@@ -461,7 +466,8 @@ namespace ConvenientNote.ViewModels
 
         private void RefreshVisibleTodos()
         {
-            var boardTodos = _allTodoItems.Where(todo => todo.BoardKey == _boardKey);
+            var boardTodos = _allTodoItems.Where(todo => todo.BoardKey == _boardKey && !todo.IsDeleted);
+            if (_filterByDate) boardTodos = boardTodos.Where(todo => todo.PlannedDate == _selectedDate);
             var visibleTodos = _filter switch
             {
                 TodoBoardFilter.Active => boardTodos.Where(todo => !todo.IsCompleted),
@@ -499,8 +505,8 @@ namespace ConvenientNote.ViewModels
 
         private void RefreshViewStatus()
         {
-            var completedCount = _allTodoItems.Count(todo => todo.IsCompleted);
-            var totalCount = _allTodoItems.Count;
+            var completedCount = _allTodoItems.Count(todo => todo.BoardKey == _boardKey && !todo.IsDeleted && todo.IsCompleted);
+            var totalCount = _allTodoItems.Count(todo => todo.BoardKey == _boardKey && !todo.IsDeleted);
 
             Summary = _filter == TodoBoardFilter.Completed
                 ? $"已完成 {completedCount} / 全部 {totalCount}"
@@ -525,6 +531,7 @@ namespace ConvenientNote.ViewModels
         {
             _selectedDate = date.Date;
             RefreshDateStrip();
+            RefreshVisibleTodos();
         }
 
         private void RefreshDateStrip()

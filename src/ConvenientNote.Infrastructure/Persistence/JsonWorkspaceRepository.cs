@@ -188,7 +188,7 @@ public sealed class JsonWorkspaceRepository : IWorkspaceRepository
             note.Tags,
             note.IsPinned,
             note.IsFavorite,
-            note.IsDeleted));
+            note.IsDeleted, note.PlannedDate, note.CompletedAt));
 
         return new Workspace(
             new WorkspaceId(record.Id),
@@ -220,6 +220,8 @@ public sealed class JsonWorkspaceRepository : IWorkspaceRepository
                 Color = note.Color,
                 ZIndex = note.ZIndex,
                 IsCompleted = note.IsCompleted,
+                PlannedDate = note.PlannedDate,
+                CompletedAt = note.CompletedAt,
                 RichContent = note.RichContent,
                 NotebookId = note.NotebookId?.Value,
                 Tags = note.Tags.ToList(),
@@ -248,6 +250,8 @@ public sealed class JsonWorkspaceRepository : IWorkspaceRepository
             Color = note.Color,
             ZIndex = note.ZIndex,
             IsCompleted = note.IsCompleted,
+                PlannedDate = note.PlannedDate,
+                CompletedAt = note.CompletedAt,
             RichContent = note.RichContent,
             NotebookId = note.NotebookId?.Value,
             Tags = note.Tags.ToList(),
@@ -318,6 +322,10 @@ public sealed class JsonWorkspaceRepository : IWorkspaceRepository
         public int ZIndex { get; init; }
 
         public bool IsCompleted { get; init; }
+
+        public DateTime? PlannedDate { get; init; }
+
+        public DateTimeOffset? CompletedAt { get; init; }
 
         public string RichContent { get; init; } = string.Empty;
 

@@ -20,6 +20,8 @@ namespace ConvenientNote
         {
             Id = note.Id;
             BoardKey = note.BoardKey;
+            PlannedDate = note.PlannedDate;
+            IsDeleted = note.IsDeleted;
             _priority = note.Priority;
             _title = note.Title;
             _content = note.Content;
@@ -36,6 +38,10 @@ namespace ConvenientNote
         public NoteId Id { get; }
 
         public string BoardKey { get; }
+
+        public DateTime? PlannedDate { get; }
+
+        public bool IsDeleted { get; }
 
         public string Priority
         {

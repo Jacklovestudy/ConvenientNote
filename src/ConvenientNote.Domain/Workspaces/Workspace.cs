@@ -102,6 +102,12 @@ public sealed class Workspace
         Touch();
     }
 
+    public void SetNotePlannedDate(NoteId noteId, DateTime? date)
+    {
+        GetRequiredNote(noteId).SetPlannedDate(date);
+        Touch();
+    }
+
     public void SetNotePriority(NoteId noteId, string priority)
     {
         GetRequiredNote(noteId).SetPriority(priority);

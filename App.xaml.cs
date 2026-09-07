@@ -6,6 +6,8 @@ using ConvenientNote.Views;
 using Prism.DryIoc;
 using Prism.Ioc;
 using System.Windows;
+using System.IO;
+using ConvenientNote.ViewModels;
 
 namespace ConvenientNote
 {
@@ -14,6 +16,20 @@ namespace ConvenientNote
     /// </summary>
     public partial class App : PrismApplication
     {
+
+        private static string DataDirectory => Environment.GetEnvironmentVariable("CONVENIENTNOTE_DATA_DIRECTORY")
+            is { Length: > 0 } customDirectory ? Path.GetFullPath(customDirectory)
+            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ConvenientNote");
+
+        protected override void OnInitialized()
+        {
+            base.OnInitialized();
+            ShutdownMode = ShutdownMode.OnMainWindowClose;
+            if (MainWindow is not MainWindow window) return;
+            var calendar = Container.Resolve<ScheduleViewModel>();
+            window.InitializeCompactCalendar(calendar);
+        }
+
         protected override Window CreateShell()
         {
             return Container.Resolve<MainWindow>();
@@ -21,10 +37,11 @@ namespace ConvenientNote
 
         protected override void RegisterTypes(IContainerRegistry containerRegistry)
         {
-            containerRegistry.RegisterSingleton<IWorkspaceRepository, SqliteWorkspaceRepository>();
+            containerRegistry.RegisterInstance<IWorkspaceRepository>(new SqliteWorkspaceRepository(Path.Combine(DataDirectory, "ConvenientNote.db")));
             containerRegistry.RegisterSingleton<WorkspaceApplicationService>();
             containerRegistry.RegisterSingleton<OpenMeteoWeatherService>();
-            containerRegistry.RegisterSingleton<NoteMediaService>();
+            containerRegistry.RegisterInstance(new NoteMediaService(Path.Combine(DataDirectory, "Media")));
+            containerRegistry.RegisterSingleton<ScheduleViewModel>();
             containerRegistry.RegisterSingleton<NotesBackupService>();
             containerRegistry.RegisterSingleton<NotesBackupPackageStager>();
             containerRegistry.RegisterSingleton<WorkspaceTransferRequestGate>();

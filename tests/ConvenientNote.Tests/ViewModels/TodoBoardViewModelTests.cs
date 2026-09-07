@@ -14,6 +14,25 @@ namespace ConvenientNote.Tests.ViewModels;
 public sealed class TodoBoardViewModelTests
 {
     [Fact]
+    public async Task DateSelectionFiltersScheduledTasksWhileInboxKeepsUnscheduledTasks()
+    {
+        var repository = new InMemoryWorkspaceRepository();
+        var service = new WorkspaceApplicationService(repository);
+        var workspace = await service.GetOrCreateDefaultWorkspaceAsync();
+        var today = await service.CreateScheduledTodoAsync(workspace.Id, "今天", DateTime.Today);
+        var tomorrow = await service.CreateScheduledTodoAsync(workspace.Id, "明天", DateTime.Today.AddDays(1));
+        await service.CreateNoteAsync(workspace.Id, 0, 0, "未安排");
+        var day = new DayTodoViewModel(service, new OpenMeteoWeatherService());
+        await NavigateToWorkspaceAsync(day, 1);
+        Assert.Equal(today.Id, Assert.Single(day.TodoItems).Id);
+        day.SelectDateCommand.Execute(new DateTabViewModel(DateTime.Today.AddDays(1), false, true));
+        Assert.Equal(tomorrow.Id, Assert.Single(day.TodoItems).Id);
+        var inbox = new InboxViewModel(service, new OpenMeteoWeatherService());
+        await NavigateToWorkspaceAsync(inbox, 3);
+        Assert.Equal(3, inbox.TodoItems.Count);
+    }
+
+    [Fact]
     public async Task DeleteTodoAsync_RemovesPersistedTodoAndRefreshesBoardState()
     {
         var (viewModel, repository, todo) = await CreateLoadedViewModelAsync();
@@ -87,13 +106,14 @@ public sealed class TodoBoardViewModelTests
     {
         var repository = new InMemoryWorkspaceRepository();
         var workspace = Workspace.Create("Test workspace");
-        workspace.AddNote(
+        var scheduled = workspace.AddNote(
             TodoBoardKeys.DayTodo,
             "Delete me",
             "Original content",
             new NotePosition(32, 32),
             new NoteSize(260, 150),
             "#FFF8B8");
+        workspace.SetNotePlannedDate(scheduled.Id, DateTime.Today);
         await repository.SaveAsync(workspace);
 
         var workspaceApplicationService = new WorkspaceApplicationService(repository);
@@ -205,7 +225,9 @@ public sealed class TodoBoardViewModelTests
                     note.ZIndex,
                     note.IsCompleted,
                     note.CreatedAt,
-                    note.UpdatedAt)));
+                    note.UpdatedAt,
+                    plannedDate: note.PlannedDate,
+                    completedAt: note.CompletedAt)));
         }
     }
 }

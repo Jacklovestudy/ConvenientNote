@@ -32,7 +32,9 @@ public sealed class Note
         IEnumerable<string>? tags = null,
         bool isPinned = false,
         bool isFavorite = false,
-        bool isDeleted = false)
+        bool isDeleted = false,
+        DateTime? plannedDate = null,
+        DateTimeOffset? completedAt = null)
     {
         Id = id;
         BoardKey = NormalizeBoardKey(boardKey);
@@ -50,6 +52,8 @@ public sealed class Note
         IsPinned = isPinned;
         IsFavorite = isFavorite;
         IsDeleted = isDeleted;
+        PlannedDate = plannedDate?.Date;
+        CompletedAt = isCompleted ? completedAt : null;
         CreatedAt = createdAt;
         UpdatedAt = updatedAt;
     }
@@ -73,6 +77,10 @@ public sealed class Note
     public int ZIndex { get; private set; }
 
     public bool IsCompleted { get; private set; }
+
+    public DateTime? PlannedDate { get; private set; }
+
+    public DateTimeOffset? CompletedAt { get; private set; }
 
     public string RichContent { get; private set; }
 
@@ -197,7 +205,15 @@ public sealed class Note
 
     public void SetCompletion(bool isCompleted)
     {
+        if (IsCompleted == isCompleted) return;
         IsCompleted = isCompleted;
+        CompletedAt = isCompleted ? DateTimeOffset.UtcNow : null;
+        Touch();
+    }
+
+    public void SetPlannedDate(DateTime? date)
+    {
+        PlannedDate = date?.Date;
         Touch();
     }
 

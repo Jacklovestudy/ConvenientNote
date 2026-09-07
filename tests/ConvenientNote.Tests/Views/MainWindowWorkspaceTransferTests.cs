@@ -19,7 +19,7 @@ public sealed class MainWindowWorkspaceTransferTests
     {
         RunSta(() =>
         {
-            var wrapper = LoadViewMarkup(Path.Combine("Views", fileName));
+            var wrapper = LoadViewMarkup(Path.Combine("Features", "Todos", fileName));
 
             Assert.Null(wrapper.FindName("TodoBoard"));
         });
@@ -43,7 +43,7 @@ public sealed class MainWindowWorkspaceTransferTests
 
     private static Window LoadMainWindowMarkup()
     {
-        var markup = File.ReadAllText(FindSourceFile("MainWindow.xaml"));
+        var markup = File.ReadAllText(FindSourceFile(Path.Combine("Shell", "MainWindow.xaml")));
         markup = markup.Replace(
             "xmlns:local=\"clr-namespace:ConvenientNote\"",
             "xmlns:local=\"clr-namespace:ConvenientNote;assembly=ConvenientNote\"");
