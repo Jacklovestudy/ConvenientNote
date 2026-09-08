@@ -2,43 +2,44 @@
 
 一款原生 WPF 便签与笔记应用。
 
-## 源码目录
+## 架构与入口
 
-界面代码按功能放在物理目录中，同一功能的页面与 ViewModel 就近存放：
+项目采用模块化单体架构。待办、笔记、日历、取色器各有独立的 Domain、Application、Infrastructure、UI、Contracts 项目。
 
 ```text
-App.xaml / App.xaml.cs             应用入口与依赖注册
-Shell/                            主窗口、导航、窗口生命周期
-Features/
-  Notes/                          笔记页面、便签墙、视图模型
-    Editor/                       富文本编辑器、目录、代码块、保存协调
-    Knowledge/                    知识点清单
-    Backup/                       笔记导入导出
-    Media/                        图片管理
-  Todos/                          今日待办、待办箱、已完成、共用画布
-    Legacy/                       兼容保留的旧待测试页面
-  Calendar/                       日程日历
-  Review/                         数据复盘
-  Trash/                          回收站
-Shared/
-  Weather/                        天气服务
-  Workspace/                      工作区传输协调
-Resources/                        图标、主题、内置清单
-src/
-  ConvenientNote.Domain/          领域对象与业务规则
-  ConvenientNote.Application/     用例、快照、存储接口
-  ConvenientNote.Infrastructure/  SQLite / JSON 存储实现
-tests/ConvenientNote.Tests/        按层组织的回归测试
-docs/                             设计与实施记录
+UI/ConvenientNote.Desktop/         桌面启动入口、主窗口与模块装配
+UI/ConvenientNote.Notes.UI/        笔记与回收站界面
+UI/ConvenientNote.Todos.UI/        待办界面
+UI/ConvenientNote.Calendar.UI/     日历界面
+UI/ConvenientNote.ColorPicker.UI/  取色器界面
+UI/ConvenientNote.UI.Common/       公共界面控件与样式
+src/App/                          四个模块的 Application 项目
+src/Modules/                      四个模块的 Domain 项目
+src/Infrastructure/               四个模块的存储与平台实现
+src/Contracts/                    四个模块的公开接口
+src/Shared/                       工作区身份、通用界面契约与样式
+src/Compatibility/                旧格式读取与一次性数据迁移
+tests/                            模块、迁移、架构及界面回归测试
 ```
 
-新增日历界面及后续桌面日历窗口归入 `Features/Calendar`；跨功能通用窗口能力归入 `Shell` 或 `Shared`。功能专用组件和服务放在所属功能下，不再新增根目录 `Views`、`ViewModels`、`Services`。
+打开 `ConvenientNote.slnx`，将 `ConvenientNote.Desktop` 设为启动项目；命令行运行：
 
-本次整理只调整物理路径，保留现有 CLR 命名空间和 XAML `x:Class`，保证 Prism 的 ViewModel 自动定位及现有调用兼容。资源路径、数据库格式及数据保存位置保持原有约定。历史设计文档中的旧路径反映当时结构，当前归属以本节为准。
+```powershell
+dotnet run --project UI/ConvenientNote.Desktop/ConvenientNote.Desktop.csproj
+```
+
+软件默认进入笔记页。完整的模块职责、依赖约束、迁移和恢复说明见 [架构约定](docs/architecture.md)。新增功能应进入所属模块，禁止模块引用其他模块内部项目。
+
+首次运行新版本前请关闭旧版本。旧数据库通过一致性快照迁入 `ConvenientNote.Modules.db`，旧媒体复制到 `Notes/Media`；原数据库和媒体保留。迁移失败可重试，完成后不会再次覆盖新版数据。
+
+## 取色器
+
+导航中的“取色器”支持屏幕取色、颜色预览、HEX/RGB 复制，以及最近 32 种颜色。点击“屏幕取色”后单击确认，Esc 取消。使用取色前的屏幕快照，避免浮层干扰颜色。历史保存在 `ColorPicker/history.json`；读取异常时保留原文件并显示只读警告。
 
 ## 日历与桌面模式
 
 - “日程概览”显示周一开始的连续日历。鼠标滚轮或拖动滚动条可前后浏览，接近边缘时补入完整月份；每个月独立显示标题、星期对齐的日期格及区块间距。支持切换月份、日期跳转、回到今天、公历及农历主要节日。只保留附近最多 7 个月，避免无限累积控件。
+- 日历拥有独立日程，可创建全天或当天定时安排、改期、完成和删除；待办仍通过独立模块契约联动。精简模式专注查看，新增日程表单在完整模式显示。
 - 选中日期后输入任务标题，按 Enter 或点击“添加”。任务使用原待办数据，完成状态会同步到今日待办和已达成；今日待办现在按日期筛选，待办箱保留所有未完成事项。
 - 完整日历的任务行可以选择日期后点击“改期”，也可拖动任务标题到日历日期格子。清空日期再改期可移回“待安排”；旧任务保留未安排状态，在日历的“待安排”中可安排到选中日期。
 - 2026 年的“休 / 班”标记来自[国务院办公厅通知](https://www.gov.cn/zhengce/content/202511/content_7047090.htm)。其他年份不猜测调休；农历超出系统支持范围时显示暂无数据。当前未提供二十四节气。
@@ -53,7 +54,7 @@ docs/                             设计与实施记录
 
 便签墙右侧提供独立的“知识点清单”长便签，初始为提供的 19 个分类、149 个知识点和优先复习清单。勾选立即保存并更新掌握数量；点击“编辑”可直接增删文字，支持保存、取消、`Ctrl+S`，以及删除后撤销。删除后的空便签不会在重启时自动恢复。拖动中间分隔线可以调整宽度，右侧独立滚动。
 
-知识点便签在当前工作区共用，使用原有 SQLite 笔记存储，作为一条记录随 `.cnote` 笔记备份导入、导出，不计入便签墙卡片数。文字编辑后点击“保存”；关闭窗口及导出前也会保存当前草稿。分类用 `### ` 开头，条目末尾的 `☐` / `☑` 会显示为可点击复选框。
+知识点便签在当前工作区共用，使用 Notes 模块的 SQLite 存储，作为一条记录随 `.cnote` 笔记备份导入、导出，不计入便签墙卡片数。文字编辑后点击“保存”；关闭窗口及导出前也会保存当前草稿。分类用 `### ` 开头，条目末尾的 `☐` / `☑` 会显示为可点击复选框。
 
 ## 笔记功能
 
@@ -68,7 +69,7 @@ docs/                             设计与实施记录
 - 代码块：在独立正文段落点击“代码块”插入，也可以先选中代码文字再转换。支持 C# 语法高亮、纯文本模式、行号、四空格缩进、自动换行和一键复制；长代码在块内滚动。代码内容参与搜索、保存和章节折叠。
 - 选中文字点击“行内代码”设置等宽背景样式，再选中其中的文字点击可取消。代码块内按 `Esc` 或 `Ctrl+Enter` 返回正文，撤销和重做作用于当前编辑的代码或正文。
 
-数据保存在 `%LocalAppData%\ConvenientNote`：SQLite 数据库为 `ConvenientNote.db`，图片位于 `Media` 目录。旧“待测试”页面的数据继续作为笔记显示，不会被复制或清除。
+数据保存在 `%LocalAppData%\ConvenientNote`：当前 SQLite 数据库为 `ConvenientNote.Modules.db`，图片位于 `Notes/Media` 目录；原 `ConvenientNote.db` 和 `Media` 保留用于旧数据恢复。旧“待测试”页面的数据继续作为笔记显示，不会被复制或清除。
 
 快捷键：`Ctrl+S` 保存，`Esc` 返回笔记墙；编辑器中可以使用 WPF 标准的 `Ctrl+B`、`Ctrl+I`、`Ctrl+U`、`Ctrl+Z` 和 `Ctrl+Y`。
 

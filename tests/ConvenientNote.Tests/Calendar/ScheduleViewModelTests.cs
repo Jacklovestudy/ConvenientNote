@@ -1,3 +1,4 @@
+using ConvenientNote.Tests.Compatibility;
 using ConvenientNote.Application.Abstractions;
 using ConvenientNote.Application.Workspaces;
 using ConvenientNote.Domain.Workspaces;
@@ -11,7 +12,7 @@ public sealed class ScheduleViewModelTests
     [Fact]
     public void Continuous_calendar_extends_without_gaps_and_bounds_loaded_weeks()
     {
-        var vm = new ScheduleViewModel(new WorkspaceApplicationService(new Repository()));
+        var vm = new ScheduleViewModel(CalendarServiceFixture.Create(new WorkspaceApplicationService(new Repository())));
         vm.DisplayMonth = new DateTime(2026, 12, 1);
         var original = vm.Days.ToArray();
         Assert.Equal(0, vm.ExtendCalendar(false));
@@ -42,7 +43,7 @@ public sealed class ScheduleViewModelTests
     [Fact]
     public void Selecting_within_month_preserves_date_cells_and_only_updates_selection()
     {
-        var vm = new ScheduleViewModel(new WorkspaceApplicationService(new Repository()));
+        var vm = new ScheduleViewModel(CalendarServiceFixture.Create(new WorkspaceApplicationService(new Repository())));
         vm.SelectDate(new DateTime(2026, 9, 7));
         var cells = vm.Days.ToArray();
         var resets = 0;
@@ -67,7 +68,7 @@ public sealed class ScheduleViewModelTests
         var service = new WorkspaceApplicationService(repository);
         var workspace = await service.GetOrCreateDefaultWorkspaceAsync();
         await service.CreateScheduledTodoAsync(workspace.Id, "保存中", DateTime.Today);
-        var vm = new ScheduleViewModel(service);
+        var vm = new ScheduleViewModel(CalendarServiceFixture.Create(service));
         await vm.RefreshAsync();
         var task = Assert.Single(vm.SelectedTasks);
         repository.SaveEntered = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -94,7 +95,7 @@ public sealed class ScheduleViewModelTests
         await service.MoveNoteToTrashAsync(workspace.Id, removed.Id);
         await service.CreateNoteAsync(workspace.Id, 0, 0, "知识点", TodoBoardKeys.Notes);
         await service.CreateScheduledTodoAsync(workspace.Id, "闰日计划", date);
-        var vm = new ScheduleViewModel(service);
+        var vm = new ScheduleViewModel(CalendarServiceFixture.Create(service));
         vm.SelectDate(date.AddHours(15));
         await vm.RefreshAsync();
         Assert.Equal(date, vm.SelectedDate);
@@ -110,7 +111,7 @@ public sealed class ScheduleViewModelTests
         var date = new DateTime(2026, 12, 31);
         var scheduled = await service.CreateScheduledTodoAsync(workspace.Id, "年末整理", date);
         await service.CreateNoteAsync(workspace.Id, 0, 0, "待安排");
-        var vm = new ScheduleViewModel(service);
+        var vm = new ScheduleViewModel(CalendarServiceFixture.Create(service));
         vm.SelectDate(date);
         await vm.RefreshAsync();
         Assert.Equal("年末整理", Assert.Single(vm.SelectedTasks).Title);
@@ -120,7 +121,7 @@ public sealed class ScheduleViewModelTests
         await vm.RescheduleAsync(vm.SelectedTasks[0], date.AddDays(1));
         Assert.Empty(vm.SelectedTasks);
         vm.SelectDate(date.AddDays(1));
-        Assert.Equal(scheduled.Id, Assert.Single(vm.SelectedTasks).Id);
+        Assert.Equal(scheduled.Id.Value, Assert.Single(vm.SelectedTasks).Id);
         await service.CreateScheduledTodoAsync(workspace.Id, "新安排", date.AddDays(1));
         await vm.RefreshAsync();
         Assert.Equal(2, vm.SelectedTasks.Count);

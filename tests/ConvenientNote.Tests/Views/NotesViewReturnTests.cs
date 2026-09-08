@@ -1,3 +1,4 @@
+using WorkspaceApplicationService = ConvenientNote.Tests.Compatibility.NotesServiceFixture;
 using System.IO;
 using System.Runtime.ExceptionServices;
 using System.Windows;

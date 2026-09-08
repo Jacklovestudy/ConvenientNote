@@ -23,7 +23,7 @@ public sealed class MainWindowTitleBarTests
                 var resources = new ResourceDictionary
                 {
                     Source = new Uri(
-                        "pack://application:,,,/ConvenientNote;component/Resources/WindowControls.xaml",
+                        "pack://application:,,,/ConvenientNote.UI.Common;component/WindowControls.xaml",
                         UriKind.Absolute)
                 };
                 var standardStyle = Assert.IsType<Style>(resources["TitleBarButtonStyle"]);

@@ -1,3 +1,4 @@
+using WorkspaceApplicationService = ConvenientNote.Tests.Compatibility.NotesServiceFixture;
 using System.IO;
 using System.IO.Compression;
 using System.Reflection;
@@ -192,8 +193,8 @@ public sealed class NotesTransferTests
         var notesConstructor = Assert.Single(typeof(NotesView).GetConstructors());
         Assert.Equal(
             [
-                typeof(NotesBackupService),
-                typeof(NotesBackupPackageStager),
+                typeof(INotesBackupService),
+                typeof(INotesBackupPackageStager),
                 typeof(WorkspaceTransferRequestGate),
                 typeof(IRegionManager)
             ],
@@ -693,10 +694,10 @@ public sealed class NotesTransferTests
 
     private static UserControl LoadNotesMarkup()
     {
-        var markup = File.ReadAllText(FindSourceFile(Path.Combine("Features", "Notes", "NotesView.xaml")));
+        var markup = File.ReadAllText(FindSourceFile(Path.Combine("UI", "ConvenientNote.Notes.UI", "Notes", "NotesView.xaml")));
         markup = markup.Replace(
             "xmlns:views=\"clr-namespace:ConvenientNote.Views\"",
-            "xmlns:views=\"clr-namespace:ConvenientNote.Views;assembly=ConvenientNote\"");
+            "xmlns:views=\"clr-namespace:ConvenientNote.Views;assembly=ConvenientNote.Notes.UI\"");
         markup = Regex.Replace(
             markup,
             "\\s+(?:x:Class|prism:ViewModelLocator.AutoWireViewModel|Click)=\"[^\"]*\"",

@@ -19,7 +19,7 @@ public sealed class MainWindowWorkspaceTransferTests
     {
         RunSta(() =>
         {
-            var wrapper = LoadViewMarkup(Path.Combine("Features", "Todos", fileName));
+            var wrapper = LoadViewMarkup(Path.Combine("UI", "ConvenientNote.Todos.UI", fileName));
 
             Assert.Null(wrapper.FindName("TodoBoard"));
         });
@@ -43,7 +43,7 @@ public sealed class MainWindowWorkspaceTransferTests
 
     private static Window LoadMainWindowMarkup()
     {
-        var markup = File.ReadAllText(FindSourceFile(Path.Combine("Shell", "MainWindow.xaml")));
+        var markup = File.ReadAllText(FindSourceFile(Path.Combine("UI", "ConvenientNote.Desktop", "Shell", "MainWindow.xaml")));
         markup = markup.Replace(
             "xmlns:local=\"clr-namespace:ConvenientNote\"",
             "xmlns:local=\"clr-namespace:ConvenientNote;assembly=ConvenientNote\"");
@@ -64,7 +64,7 @@ public sealed class MainWindowWorkspaceTransferTests
         var markup = File.ReadAllText(FindSourceFile(relativePath));
         markup = markup.Replace(
             "xmlns:views=\"clr-namespace:ConvenientNote.Views\"",
-            "xmlns:views=\"clr-namespace:ConvenientNote.Views;assembly=ConvenientNote\"");
+            "xmlns:views=\"clr-namespace:ConvenientNote.Views;assembly=ConvenientNote.Todos.UI\"");
         markup = Regex.Replace(
             markup,
             "\\s+(?:x:Class|prism:ViewModelLocator.AutoWireViewModel)=\"[^\"]*\"",

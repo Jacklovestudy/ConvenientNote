@@ -1,3 +1,4 @@
+using WorkspaceApplicationService = ConvenientNote.Tests.Compatibility.NotesServiceFixture;
 using System.IO;
 using ConvenientNote.Application.Abstractions;
 using ConvenientNote.Application.Workspaces;

@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../Modules/ConvenientNote.ColorPicker.Domain/ConvenientNote.ColorPicker.Domain.csproj" />
+    <ProjectReference Include="../../Contracts/ConvenientNote.ColorPicker.Contracts/ConvenientNote.ColorPicker.Contracts.csproj" />
+  </ItemGroup>
+</Project>

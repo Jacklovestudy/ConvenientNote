@@ -7,6 +7,7 @@
 *.sln.docstates
 
 # Build output
+.codex-artifacts/
 [Bb]in/
 [Oo]bj/
 [Dd]ebug/

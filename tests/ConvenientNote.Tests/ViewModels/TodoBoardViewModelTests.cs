@@ -1,10 +1,10 @@
 using System.IO;
 using System.Reflection;
 using System.Windows;
-using ConvenientNote.Application.Abstractions;
-using ConvenientNote.Application.Workspaces;
-using ConvenientNote.Domain.Notes;
-using ConvenientNote.Domain.Workspaces;
+using ConvenientNote.Platform.Contracts;
+using ConvenientNote.Todos.Application;
+using ConvenientNote.Todos.Domain;
+
 using ConvenientNote.Services;
 using ConvenientNote.ViewModels;
 using Xunit;
@@ -16,12 +16,12 @@ public sealed class TodoBoardViewModelTests
     [Fact]
     public async Task DateSelectionFiltersScheduledTasksWhileInboxKeepsUnscheduledTasks()
     {
-        var repository = new InMemoryWorkspaceRepository();
-        var service = new WorkspaceApplicationService(repository);
-        var workspace = await service.GetOrCreateDefaultWorkspaceAsync();
-        var today = await service.CreateScheduledTodoAsync(workspace.Id, "今天", DateTime.Today);
-        var tomorrow = await service.CreateScheduledTodoAsync(workspace.Id, "明天", DateTime.Today.AddDays(1));
-        await service.CreateNoteAsync(workspace.Id, 0, 0, "未安排");
+        var repository = new InMemoryTodoRepository();
+        var service = new TodoApplicationService(repository, new WorkspaceContext());
+        var workspace = await service.GetCurrentAsync();
+        var today = await service.CreateTodoAsync(workspace.Id, 32, 32, "今天", DateTime.Today);
+        var tomorrow = await service.CreateTodoAsync(workspace.Id, 32, 32, "明天", DateTime.Today.AddDays(1));
+        await service.CreateTodoAsync(workspace.Id, 0, 0, "未安排");
         var day = new DayTodoViewModel(service, new OpenMeteoWeatherService());
         await NavigateToWorkspaceAsync(day, 1);
         Assert.Equal(today.Id, Assert.Single(day.TodoItems).Id);
@@ -44,7 +44,7 @@ public sealed class TodoBoardViewModelTests
         Assert.Equal(1800, viewModel.BoardWidth);
         Assert.Equal(1100, viewModel.BoardHeight);
         Assert.False(viewModel.CanArrangeTodos);
-        Assert.Empty(repository.StoredWorkspace!.Notes);
+        Assert.Empty(repository.ActiveItems);
     }
 
     [Fact]
@@ -57,7 +57,7 @@ public sealed class TodoBoardViewModelTests
         var exception = await Record.ExceptionAsync(() => viewModel.CommitTodoTitleAsync(todo));
 
         Assert.Null(exception);
-        Assert.Empty(repository.StoredWorkspace!.Notes);
+        Assert.Empty(repository.ActiveItems);
     }
 
     [Fact]
@@ -70,7 +70,7 @@ public sealed class TodoBoardViewModelTests
         var exception = await Record.ExceptionAsync(() => viewModel.CommitTodoContentAsync(todo));
 
         Assert.Null(exception);
-        Assert.Empty(repository.StoredWorkspace!.Notes);
+        Assert.Empty(repository.ActiveItems);
     }
 
     [Fact]
@@ -84,7 +84,7 @@ public sealed class TodoBoardViewModelTests
         await viewModel.CommitTodoTitleAsync(todo);
 
         Assert.Same(todo, Assert.Single(viewModel.TodoItems));
-        var persistedTodo = Assert.Single(repository.StoredWorkspace!.Notes);
+        var persistedTodo = Assert.Single(repository.ActiveItems);
         Assert.Equal("Edited after failed deletion", persistedTodo.Title);
     }
 
@@ -98,25 +98,18 @@ public sealed class TodoBoardViewModelTests
         await viewModel.DeleteTodoAsync(todo);
 
         Assert.Equal(getCallsAfterDeletion, repository.GetAsyncCallCount);
-        Assert.Empty(repository.StoredWorkspace!.Notes);
+        Assert.Empty(repository.ActiveItems);
     }
 
-    private static async Task<(DayTodoViewModel ViewModel, InMemoryWorkspaceRepository Repository, CanvasTodoViewModel Todo)>
+    private static async Task<(DayTodoViewModel ViewModel, InMemoryTodoRepository Repository, CanvasTodoViewModel Todo)>
         CreateLoadedViewModelAsync()
     {
-        var repository = new InMemoryWorkspaceRepository();
-        var workspace = Workspace.Create("Test workspace");
-        var scheduled = workspace.AddNote(
-            TodoBoardKeys.DayTodo,
-            "Delete me",
-            "Original content",
-            new NotePosition(32, 32),
-            new NoteSize(260, 150),
-            "#FFF8B8");
-        workspace.SetNotePlannedDate(scheduled.Id, DateTime.Today);
-        await repository.SaveAsync(workspace);
-
-        var workspaceApplicationService = new WorkspaceApplicationService(repository);
+        var repository = new InMemoryTodoRepository();
+        var scheduled = TodoItem.Create("Delete me",32,32);
+        scheduled.UpdateContent("Original content");
+        scheduled.Reschedule(DateTime.Today);
+        await repository.SaveAsync(WorkspaceContext.WorkspaceId,[scheduled]);
+        var workspaceApplicationService = new TodoApplicationService(repository,new WorkspaceContext());
         var viewModel = new DayTodoViewModel(
             workspaceApplicationService,
             new OpenMeteoWeatherService());
@@ -150,84 +143,28 @@ public sealed class TodoBoardViewModelTests
         }
     }
 
-    private sealed class InMemoryWorkspaceRepository : IWorkspaceRepository
+    private sealed class WorkspaceContext : IWorkspaceContext
     {
-        public Workspace? StoredWorkspace { get; private set; }
-
-        public bool FailNextSave { get; set; }
-
-        public int GetAsyncCallCount { get; private set; }
-
-        public Task<IReadOnlyList<Workspace>> ListAsync(
-            CancellationToken cancellationToken = default)
-        {
-            IReadOnlyList<Workspace> workspaces = StoredWorkspace is null
-                ? []
-                : [Clone(StoredWorkspace)];
-            return Task.FromResult(workspaces);
-        }
-
-        public Task<Workspace?> GetAsync(
-            WorkspaceId workspaceId,
-            CancellationToken cancellationToken = default)
+        public static readonly Guid WorkspaceId=Guid.NewGuid();
+        public Task<WorkspaceInfo> GetCurrentAsync(CancellationToken cancellationToken=default)=>Task.FromResult(new WorkspaceInfo(WorkspaceId,"test"));
+    }
+    private sealed class InMemoryTodoRepository : ITodoRepository
+    {
+        private readonly Dictionary<TodoId,TodoItem> _items=new();
+        public IEnumerable<TodoItem> ActiveItems=>_items.Values.Where(t=>!t.IsDeleted);
+        public bool FailNextSave {get;set;}
+        public int GetAsyncCallCount {get;private set;}
+        public Task<IReadOnlyList<TodoItem>> ListAsync(Guid workspaceId,CancellationToken cancellationToken=default)
         {
             GetAsyncCallCount++;
-            var workspace = StoredWorkspace?.Id == workspaceId
-                ? Clone(StoredWorkspace)
-                : null;
-            return Task.FromResult(workspace);
+            return Task.FromResult<IReadOnlyList<TodoItem>>(_items.Values.Select(Clone).ToArray());
         }
-
-        public Task SaveAsync(
-            Workspace workspace,
-            CancellationToken cancellationToken = default)
+        public Task SaveAsync(Guid workspaceId,IReadOnlyList<TodoItem> items,CancellationToken cancellationToken=default)
         {
-            if (FailNextSave)
-            {
-                FailNextSave = false;
-                throw new IOException("Simulated persistence failure.");
-            }
-
-            StoredWorkspace = Clone(workspace);
+            if(FailNextSave){FailNextSave=false;throw new IOException("Simulated persistence failure.");}
+            foreach(var item in items)_items[item.Id]=Clone(item);
             return Task.CompletedTask;
         }
-
-        public Task DeleteAsync(
-            WorkspaceId workspaceId,
-            CancellationToken cancellationToken = default)
-        {
-            if (StoredWorkspace?.Id == workspaceId)
-            {
-                StoredWorkspace = null;
-            }
-
-            return Task.CompletedTask;
-        }
-
-        public Task ReplaceActiveNotesAsync(WorkspaceId workspaceId, IReadOnlyCollection<Note> importedNotes, CancellationToken cancellationToken = default) => Task.CompletedTask;
-
-        private static Workspace Clone(Workspace workspace)
-        {
-            return new Workspace(
-                workspace.Id,
-                workspace.Name,
-                workspace.CreatedAt,
-                workspace.UpdatedAt,
-                workspace.Notes.Select(note => new Note(
-                    note.Id,
-                    note.BoardKey,
-                    note.Priority,
-                    note.Title,
-                    note.Content,
-                    note.Position,
-                    note.Size,
-                    note.Color,
-                    note.ZIndex,
-                    note.IsCompleted,
-                    note.CreatedAt,
-                    note.UpdatedAt,
-                    plannedDate: note.PlannedDate,
-                    completedAt: note.CompletedAt)));
-        }
+        private static TodoItem Clone(TodoItem item)=>TodoItem.Restore(item.Id,item.Title,item.Content,item.Priority,item.X,item.Y,item.Width,item.Height,item.Color,item.ZIndex,item.IsCompleted,item.IsDeleted,item.CreatedAt,item.UpdatedAt,item.PlannedDate,item.CompletedAt);
     }
 }

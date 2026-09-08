@@ -1,3 +1,4 @@
+using WorkspaceApplicationService = ConvenientNote.Tests.Compatibility.NotesServiceFixture;
 using System.IO;
 using System.IO.Compression;
 using System.Text.Json;
@@ -1049,7 +1050,7 @@ public sealed class NotesBackupImportTests
             note.CreatedAt,
             note.UpdatedAt));
         return JsonSerializer.Serialize(
-            NotesBackupSerializer.CreateDocument(snapshots),
+            NotesBackupSerializer.CreateDocument(snapshots.Select(ConvenientNote.Tests.Compatibility.NotesServiceFixture.ToSnapshot)),
             new JsonSerializerOptions(JsonSerializerDefaults.Web));
     }
 

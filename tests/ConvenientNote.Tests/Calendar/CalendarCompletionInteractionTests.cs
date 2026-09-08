@@ -1,3 +1,4 @@
+using ConvenientNote.Tests.Compatibility;
 using System.Runtime.ExceptionServices;
 using System.Windows;
 using System.Windows.Controls;
@@ -91,7 +92,7 @@ public sealed class CalendarCompletionInteractionTests
         var workspace = service.GetOrCreateDefaultWorkspaceAsync().GetAwaiter().GetResult();
         var note = service.CreateScheduledTodoAsync(workspace.Id, "可访问性完成操作", DateTime.Today).GetAwaiter().GetResult();
         if (completed) service.SetNoteCompletionAsync(workspace.Id, note.Id, true).GetAwaiter().GetResult();
-        var vm = new ScheduleViewModel(service);
+        var vm = new ScheduleViewModel(CalendarServiceFixture.Create(service));
         vm.RefreshAsync().GetAwaiter().GetResult();
         var panel = new CalendarPanel { IsCompact = true, DataContext = vm };
         var window = new Window { Content = panel, Width = 420, Height = 520, Left = -10000, Top = -10000, ShowActivated = false, ShowInTaskbar = false };

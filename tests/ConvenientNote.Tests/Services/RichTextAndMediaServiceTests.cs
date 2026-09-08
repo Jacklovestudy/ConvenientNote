@@ -1,7 +1,7 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Documents;
-using ConvenientNote.Domain.Notes;
+using ConvenientNote.Notes.Domain.Notes;
 using ConvenientNote.Services;
 using Xunit;
 

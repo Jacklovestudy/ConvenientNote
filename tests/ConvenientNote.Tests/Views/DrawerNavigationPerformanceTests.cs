@@ -89,10 +89,15 @@ public sealed class DrawerNavigationPerformanceTests
             region.CacheMode = existingCache;
             drawer.IsLeftDrawerOpen = true;
             Pump(50);
+            Assert.IsType<System.Windows.Media.BitmapCache>(region.CacheMode);
+            Assert.NotSame(existingCache, region.CacheMode);
             var beforeReverse = panel.TransformToAncestor(drawer).Transform(new Point()).X;
             drawer.IsLeftDrawerOpen = false;
             Assert.InRange(Math.Abs(panel.TransformToAncestor(drawer).Transform(new Point()).X - beforeReverse), 0, 1);
             Pump(50);
+            // A cancelled opening clock must not release the cache while closing is active.
+            Assert.IsType<System.Windows.Media.BitmapCache>(region.CacheMode);
+            Assert.NotSame(existingCache, region.CacheMode);
             drawer.IsLeftDrawerOpen = true;
             Pump(350);
             Assert.InRange(Math.Abs(panel.TransformToAncestor(drawer).Transform(new Point()).X), 0, 1);
@@ -119,6 +124,74 @@ public sealed class DrawerNavigationPerformanceTests
             region.Content = new TextBlock { Text = "Other page" };
             Pump(40);
             Assert.False(TransitionAssist.GetDisableTransitions(drawer));
+        }
+        finally { window.Close(); }
+    });
+
+    [Fact]
+    public void DisabledTransitionsRetemplatingAndUnloadingRestoreTheOriginalCache() => Sta(() =>
+    {
+        var drawer = (NavigationDrawerHost)System.Windows.Markup.XamlReader.Parse("""
+            <v:NavigationDrawerHost xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                xmlns:v="clr-namespace:ConvenientNote.Views;assembly=ConvenientNote"
+                xmlns:m="http://materialdesigninxaml.net/winfx/xaml/themes" OpenMode="Modal">
+                <m:DrawerHost.Resources>
+                    <ResourceDictionary><ResourceDictionary.MergedDictionaries>
+                        <m:BundledTheme BaseTheme="Light" PrimaryColor="Indigo" SecondaryColor="Teal" />
+                        <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesign3.Defaults.xaml" />
+                    </ResourceDictionary.MergedDictionaries></ResourceDictionary>
+                </m:DrawerHost.Resources>
+                <m:DrawerHost.LeftDrawerContent><Border Width="296" Background="White" /></m:DrawerHost.LeftDrawerContent>
+            </v:NavigationDrawerHost>
+            """);
+        var originalCache = new System.Windows.Media.BitmapCache();
+        var content = new Border { CacheMode = originalCache };
+        drawer.Content = content;
+        var window = new Window { Content = drawer, Width = 960, Height = 600, Left = -10000, Top = -10000, ShowActivated = false, ShowInTaskbar = false };
+        window.Show();
+        try
+        {
+            Pump(300);
+            TransitionAssist.SetDisableTransitions(drawer, true);
+            drawer.IsLeftDrawerOpen = true;
+            Pump(40);
+            Assert.Same(originalCache, content.CacheMode);
+            Pump(300);
+
+            TransitionAssist.SetDisableTransitions(drawer, false);
+            drawer.IsLeftDrawerOpen = false;
+            Pump(40);
+            Assert.NotSame(originalCache, content.CacheMode);
+            var oldRoot = (FrameworkElement)System.Windows.Media.VisualTreeHelper.GetChild(drawer, 0);
+            var oldPanel = (FrameworkElement)drawer.Template.FindName("PART_LeftDrawer", drawer);
+            var template = drawer.Template;
+            drawer.Template = null;
+            drawer.ApplyTemplate();
+            Assert.Same(originalCache, content.CacheMode);
+            Pump(350); // A long-lived null template must release references and controllable clocks.
+            Assert.Null(System.Windows.VisualStateManager.GetCustomVisualStateManager(oldRoot));
+            Assert.False(oldPanel.RenderTransform.HasAnimatedProperties);
+            foreach (var name in new[] { "_leftGroup", "_panel", "_slide", "_stateRoot", "_stateManager" })
+            {
+                Assert.Null(typeof(NavigationDrawerHost).GetField(name,
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(drawer));
+            }
+            drawer.Template = template;
+            drawer.ApplyTemplate();
+            Pump(300);
+            Assert.Same(originalCache, content.CacheMode);
+
+            drawer.IsLeftDrawerOpen = true;
+            Pump(40);
+            Assert.NotSame(originalCache, content.CacheMode);
+            window.Content = null;
+            Pump(40);
+            Assert.Same(originalCache, content.CacheMode);
+            window.Content = drawer;
+            Pump(300);
+            drawer.IsLeftDrawerOpen = false;
+            Pump(350);
+            WaitFor(() => ReferenceEquals(originalCache, content.CacheMode));
         }
         finally { window.Close(); }
     });

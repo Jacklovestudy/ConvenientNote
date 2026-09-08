@@ -1,3 +1,4 @@
+using ConvenientNote.Tests.Compatibility;
 using System.Runtime.ExceptionServices;
 using System.Windows;
 using System.Windows.Controls;
@@ -22,7 +23,7 @@ public sealed class CalendarPanelLayoutTests
             var panel = new CalendarPanel
             {
                 Width = 1000, Height = 500,
-                DataContext = new ScheduleViewModel(new WorkspaceApplicationService(new Repository()))
+                DataContext = new ScheduleViewModel(CalendarServiceFixture.Create(new WorkspaceApplicationService(new Repository())))
             };
             panel.Measure(new Size(1000, 500));
             panel.Arrange(new Rect(0, 0, 1000, 500));
@@ -64,7 +65,7 @@ public sealed class CalendarPanelLayoutTests
             var service = new WorkspaceApplicationService(new Repository());
             var workspace = service.GetOrCreateDefaultWorkspaceAsync().GetAwaiter().GetResult();
             service.CreateScheduledTodoAsync(workspace.Id, "可见的第一项待办", DateTime.Today).GetAwaiter().GetResult();
-            var vm = new ScheduleViewModel(service);
+            var vm = new ScheduleViewModel(CalendarServiceFixture.Create(service));
             vm.RefreshAsync().GetAwaiter().GetResult();
             var panel = new CalendarPanel { IsCompact = true, DataContext = vm, Width = width, Height = height };
             panel.Resources.MergedDictionaries.Add((ResourceDictionary)System.Windows.Markup.XamlReader.Parse("""
@@ -129,4 +130,3 @@ public sealed class CalendarPanelLayoutTests
         public Task ReplaceActiveNotesAsync(WorkspaceId id, IReadOnlyCollection<Note> notes, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     }
 }
-

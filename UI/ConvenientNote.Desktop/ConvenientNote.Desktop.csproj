@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <AssemblyName>ConvenientNote</AssemblyName>
+    <RootNamespace>ConvenientNote</RootNamespace>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <ApplicationIcon>../../Resources/AppIcon.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Prism.DryIoc" Version="9.0.537" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/Compatibility/ConvenientNote.LegacyMigration/ConvenientNote.LegacyMigration.csproj" />
+    <ProjectReference Include="../ConvenientNote.UI.Common/ConvenientNote.UI.Common.csproj" />
+    <ProjectReference Include="../ConvenientNote.Notes.UI/ConvenientNote.Notes.UI.csproj" />
+    <ProjectReference Include="../../src/Infrastructure/ConvenientNote.Notes.Infrastructure/ConvenientNote.Notes.Infrastructure.csproj" />
+    <ProjectReference Include="../ConvenientNote.Todos.UI/ConvenientNote.Todos.UI.csproj" />
+    <ProjectReference Include="../../src/Infrastructure/ConvenientNote.Todos.Infrastructure/ConvenientNote.Todos.Infrastructure.csproj" />
+    <ProjectReference Include="../ConvenientNote.Calendar.UI/ConvenientNote.Calendar.UI.csproj" />
+    <ProjectReference Include="../../src/Infrastructure/ConvenientNote.Calendar.Infrastructure/ConvenientNote.Calendar.Infrastructure.csproj" />
+    <ProjectReference Include="../ConvenientNote.ColorPicker.UI/ConvenientNote.ColorPicker.UI.csproj" />
+    <ProjectReference Include="../../src/Infrastructure/ConvenientNote.ColorPicker.Infrastructure/ConvenientNote.ColorPicker.Infrastructure.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="../../Resources/AppIcon.ico" Link="Resources/AppIcon.ico" />
+    <Resource Include="../../Resources/AppIcon.png" Link="Resources/AppIcon.png" />
+  </ItemGroup>
+</Project>

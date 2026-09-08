@@ -75,7 +75,7 @@ public sealed class NotesBackupSerializerTests
             new NoteSnapshot(new NoteId(Guid.Parse("0a100008-0000-0000-0000-000000000008")), TodoBoardKeys.DayTodo, "blue", "待办二", "待办", 0, 0, 260, 150, "#FFF8B8", 8, false, "{}", null, [], false, false, false, createdAt, updatedAt)
         };
 
-        var document = NotesBackupSerializer.CreateDocument(snapshots);
+        var document = NotesBackupSerializer.CreateDocument(snapshots.Select(ConvenientNote.Tests.Compatibility.NotesServiceFixture.ToSnapshot));
         using var stream = new MemoryStream();
         await NotesBackupSerializer.WriteDocumentAsync(stream, document);
         stream.Position = 0;
@@ -90,8 +90,9 @@ public sealed class NotesBackupSerializerTests
         Assert.Equal(5, restored.Count);
 
         var richNote = Assert.Single(restored, note => note.Id.Value == richNoteId);
-        Assert.Equal(TodoBoardKeys.Notes, richNote.BoardKey);
-        Assert.Equal("red", richNote.Priority);
+        Assert.Equal(TodoBoardKeys.Notes, document.Notes[0].BoardKey);
+        Assert.Equal("red", document.Notes[0].Priority);
+        Assert.Equal("red", richNote.LegacyMetadata.Priority);
         Assert.Equal("完整字段笔记", richNote.Title);
         Assert.Equal("纯文本正文", richNote.Content);
         Assert.Equal(123.45, richNote.Position.X);
@@ -100,9 +101,10 @@ public sealed class NotesBackupSerializerTests
         Assert.Equal(234.5, richNote.Size.Height);
         Assert.Equal("#12ABEF", richNote.Color);
         Assert.Equal(42, richNote.ZIndex);
-        Assert.True(richNote.IsCompleted);
+        Assert.True(document.Notes[0].IsCompleted);
+        Assert.True(richNote.LegacyMetadata.IsCompleted);
         Assert.Equal(richContent, richNote.RichContent);
-        Assert.Equal(new NotebookId(notebookId), richNote.NotebookId);
+        Assert.Equal(notebookId, richNote.NotebookId?.Value);
         Assert.Equal(["工作", "导入导出"], richNote.Tags);
         Assert.True(richNote.IsPinned);
         Assert.True(richNote.IsFavorite);

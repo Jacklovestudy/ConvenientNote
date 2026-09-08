@@ -1,3 +1,4 @@
+using WorkspaceApplicationService = ConvenientNote.Tests.Compatibility.NotesServiceFixture;
 using System.IO;
 using ConvenientNote.Application.Workspaces;
 using ConvenientNote.Domain.Notes;
@@ -30,7 +31,7 @@ public sealed class KnowledgeMemoPersistenceTests
         Assert.Equal(2, saved.Notes.Count(n => n.BoardKey == TodoBoardKeys.Notes));
         var memo = Assert.Single(saved.Notes, KnowledgeMemoMetadata.IsMemo);
         Assert.Equal(text, memo.Content);
-        var backup = NotesBackupSerializer.CreateDocument(saved.Notes);
+        var backup = NotesBackupSerializer.CreateDocument(saved.Notes.Select(ConvenientNote.Tests.Compatibility.NotesServiceFixture.ToSnapshot));
         var reopened = new NotesViewModel(new WorkspaceApplicationService(new SqliteWorkspaceRepository(path)),
             new RichTextDocumentService(), new NoteMediaService(Path.Combine(directory, "media")));
         await reopened.InitializeAsync();

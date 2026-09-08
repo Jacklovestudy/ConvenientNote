@@ -1,7 +1,7 @@
 using System.IO;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using ConvenientNote.Domain.Notes;
+using ConvenientNote.Notes.Domain.Notes;
 using ConvenientNote.Services;
 using ConvenientNote.Views;
 using Xunit;

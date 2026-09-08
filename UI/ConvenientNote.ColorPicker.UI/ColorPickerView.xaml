@@ -1,0 +1,69 @@
+<UserControl x:Class="ConvenientNote.ColorPicker.UI.ColorPickerView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="#F7F8FC" Foreground="#202534">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolVisibility" />
+        <Style x:Key="PickerButton" TargetType="Button">
+            <Setter Property="Padding" Value="16,10" />
+            <Setter Property="MinHeight" Value="42" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+    </UserControl.Resources>
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="32" MaxWidth="940" HorizontalAlignment="Stretch">
+            <TextBlock Text="取色器" FontSize="26" FontWeight="SemiBold" />
+            <TextBlock Text="从屏幕拾取颜色，快速复制到你的设计和代码中。" Foreground="#555E71"
+                       FontSize="14" Margin="0,8,0,24" TextWrapping="Wrap" />
+            <Button x:Name="PickButton" Content="屏幕取色" Click="PickColor" HorizontalAlignment="Left"
+                    Style="{StaticResource PickerButton}" Background="#3F51B5" Foreground="White"
+                    ToolTip="冻结当前屏幕，单击取色，按 Esc 取消" />
+            <Border Background="White" BorderBrush="#DDE1EA" BorderThickness="1" CornerRadius="12"
+                    Padding="24" Margin="0,24,0,0">
+                <StackPanel>
+                    <Border Background="{Binding Current.Brush}" Height="160" CornerRadius="8"
+                            BorderThickness="1" BorderBrush="#667B8496" AutomationProperties.Name="当前颜色预览" />
+                    <TextBlock Text="当前颜色" Foreground="#555E71" FontSize="13" Margin="0,20,0,6" />
+                    <TextBox Text="{Binding Current.Hex, Mode=OneWay}" IsReadOnly="True" BorderThickness="0"
+                             Background="Transparent" FontFamily="Consolas" FontSize="30" Padding="0"
+                             AutomationProperties.Name="HEX 色值" />
+                    <TextBox Text="{Binding Current.Rgb, Mode=OneWay}" IsReadOnly="True" BorderThickness="0"
+                             Background="Transparent" Foreground="#555E71" FontFamily="Consolas"
+                             FontSize="16" Padding="0" Margin="0,4,0,16" AutomationProperties.Name="RGB 色值" />
+                    <WrapPanel>
+                        <Button Content="复制 HEX" Click="CopyHex" Style="{StaticResource PickerButton}" Margin="0,0,12,8" />
+                        <Button Content="复制 RGB" Click="CopyRgb" Style="{StaticResource PickerButton}" Margin="0,0,0,8" />
+                    </WrapPanel>
+                </StackPanel>
+            </Border>
+            <TextBlock Text="{Binding Status}" Foreground="#424B5F" TextWrapping="Wrap" FontSize="13"
+                       Margin="0,12,0,28" AutomationProperties.LiveSetting="Polite" />
+            <TextBlock Text="最近颜色" FontSize="18" FontWeight="SemiBold" />
+            <TextBlock Text="保留最近 32 种颜色，点击色块即可重新选择。" Foreground="#555E71" FontSize="13"
+                       Margin="0,6,0,16" TextWrapping="Wrap" />
+            <TextBlock Text="{Binding HistoryWarning}" Foreground="#8B3E14" TextWrapping="Wrap" Margin="0,0,0,12"
+                       Visibility="{Binding HasHistoryWarning, Converter={StaticResource BoolVisibility}}"
+                       AutomationProperties.LiveSetting="Polite" />
+            <TextBlock Text="取一次颜色，它就会出现在这里。" Foreground="#555E71" Margin="0,8,0,0"
+                       Visibility="{Binding IsHistoryEmpty, Converter={StaticResource BoolVisibility}}" />
+            <ItemsControl ItemsSource="{Binding RecentColors}">
+                <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Button Click="SelectRecent" Tag="{Binding}" Padding="6" Margin="0,0,10,10"
+                                ToolTip="{Binding Rgb}" AutomationProperties.Name="{Binding Hex}" Cursor="Hand"
+                                Background="White" BorderBrush="#DDE1EA" BorderThickness="1" Height="92">
+                            <StackPanel Width="88">
+                                <Border Background="{Binding Brush}" Height="46" CornerRadius="4"
+                                        BorderThickness="1" BorderBrush="#667B8496" />
+                                <TextBlock Text="{Binding Hex}" Foreground="#30384A" FontFamily="Consolas"
+                                           FontSize="13" HorizontalAlignment="Center" Margin="0,8,0,0" />
+                            </StackPanel>
+                        </Button>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

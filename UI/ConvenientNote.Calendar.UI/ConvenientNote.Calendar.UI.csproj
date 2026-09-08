@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/App/ConvenientNote.Calendar.Application/ConvenientNote.Calendar.Application.csproj" />
+    <ProjectReference Include="../ConvenientNote.UI.Common/ConvenientNote.UI.Common.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Prism.Wpf" Version="9.0.537" />
+    <PackageReference Include="MaterialDesignThemes" Version="5.3.2" />
+  </ItemGroup>
+</Project>

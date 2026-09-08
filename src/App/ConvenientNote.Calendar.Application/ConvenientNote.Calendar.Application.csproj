@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../Modules/ConvenientNote.Calendar.Domain/ConvenientNote.Calendar.Domain.csproj" />
+    <ProjectReference Include="../../Contracts/ConvenientNote.Calendar.Contracts/ConvenientNote.Calendar.Contracts.csproj" />
+    <ProjectReference Include="../../Shared/ConvenientNote.Platform.Contracts/ConvenientNote.Platform.Contracts.csproj" />
+  </ItemGroup>
+</Project>

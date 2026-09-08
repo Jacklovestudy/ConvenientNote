@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../Modules/ConvenientNote.Todos.Domain/ConvenientNote.Todos.Domain.csproj" />
+    <ProjectReference Include="../../Contracts/ConvenientNote.Todos.Contracts/ConvenientNote.Todos.Contracts.csproj" />
+    <ProjectReference Include="../../Shared/ConvenientNote.Platform.Contracts/ConvenientNote.Platform.Contracts.csproj" />
+  </ItemGroup>
+</Project>

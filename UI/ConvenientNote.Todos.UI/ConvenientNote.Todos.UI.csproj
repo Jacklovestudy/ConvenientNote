@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Prism.DryIoc" Version="9.0.537" />
+    <PackageReference Include="MaterialDesignThemes" Version="5.3.2" />
+    <ProjectReference Include="../../src/App/ConvenientNote.Todos.Application/ConvenientNote.Todos.Application.csproj" />
+    <ProjectReference Include="../ConvenientNote.UI.Common/ConvenientNote.UI.Common.csproj" />
+  </ItemGroup>
+</Project>
