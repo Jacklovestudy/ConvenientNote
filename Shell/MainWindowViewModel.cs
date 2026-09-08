@@ -44,7 +44,7 @@ namespace ConvenientNote
             NavigationItems.Add(new NavigationItemViewModel(NavigationSection.Completed, nameof(CompletedTodoView), "已达成", "已完成事项", PackIconKind.CheckCircleOutline));
             NavigationItems.Add(new NavigationItemViewModel(NavigationSection.Trash, nameof(TrashView), "回收站", "删除的项目", PackIconKind.DeleteOutline));
 
-            _activeNavigationItem = NavigationItems.First();
+            _activeNavigationItem = NavigationItems.First(item => item.Section == NavigationSection.Notes);
         }
 
         public string Title

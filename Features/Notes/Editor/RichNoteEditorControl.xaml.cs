@@ -314,8 +314,16 @@ public partial class RichNoteEditorControl : UserControl
         }
         else if (e.Key == Key.V && Keyboard.Modifiers.HasFlag(ModifierKeys.Control) && Clipboard.ContainsImage())
         {
-            await InsertClipboardImageAsync();
             e.Handled = true;
+            try
+            {
+                await InsertClipboardImageAsync();
+            }
+            catch (Exception error)
+            {
+                MessageBox.Show(Window.GetWindow(this), "图片粘贴失败，请重试：" + error.Message,
+                    "粘贴图片", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
         }
     }
 
@@ -556,15 +564,22 @@ public partial class RichNoteEditorControl : UserControl
         {
             return;
         }
+        await ImportClipboardBitmapAsync(bitmap, InsertImageAsync);
+    }
+
+    internal static async Task ImportClipboardBitmapAsync(BitmapSource bitmap, Func<string, Task> import)
+    {
         var temporaryPath = Path.Combine(Path.GetTempPath(), $"ConvenientNote-{Guid.NewGuid():N}.png");
         try
         {
-            await using var stream = File.Create(temporaryPath);
-            var encoder = new PngBitmapEncoder();
-            encoder.Frames.Add(BitmapFrame.Create(bitmap));
-            encoder.Save(stream);
-            await stream.FlushAsync();
-            await InsertImageAsync(temporaryPath);
+            // The media importer opens this file again, so release the writer first.
+            using (var stream = File.Create(temporaryPath))
+            {
+                var encoder = new PngBitmapEncoder();
+                encoder.Frames.Add(BitmapFrame.Create(bitmap));
+                encoder.Save(stream);
+            }
+            await import(temporaryPath);
         }
         finally
         {
