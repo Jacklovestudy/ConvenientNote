@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
@@ -19,6 +20,7 @@ public sealed class ScreenColorPickerWindow : Window
     private readonly Border _preview;
     private readonly Border _swatch;
     private readonly TextBlock _label;
+    private bool _isClosing;
     public ColorValue? SelectedColor { get; private set; }
 
     public static ColorValue? Pick(Window? owner, ScreenSnapshot snapshot, IScreenCapture capture)
@@ -70,7 +72,16 @@ public sealed class ScreenColorPickerWindow : Window
         };
         PreviewKeyDown += (_, e) => { if (e.Key == Key.Escape) { e.Handled = true; DialogResult = false; } };
         // Alt+Tab cancels rather than leaving a topmost screenshot over another application.
-        Deactivated += (_, _) => { if (IsVisible) Close(); };
+        Deactivated += (_, _) => { if (!_isClosing && IsVisible) Close(); };
+    }
+
+    protected override void OnClosing(CancelEventArgs e)
+    {
+        // Closing a modal window reactivates its owner and raises Deactivated before
+        // IsVisible becomes false. That notification must not close the window again.
+        _isClosing = true;
+        base.OnClosing(e);
+        if (e.Cancel) _isClosing = false;
     }
 
     private void PlaceWindow()
