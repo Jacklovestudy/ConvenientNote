@@ -238,8 +238,7 @@ namespace ConvenientNote
             }
 
             _closeRequestInProgress = true;
-            if (MessageBox.Show(this, "确定退出 Convenient Note 吗？", "退出确认",
-                    MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No) != MessageBoxResult.Yes)
+            if (!MaterialDialogWindow.Confirm(this, "退出 Convenient Note？", "退出前会保存当前编辑的内容。", "退出软件"))
             {
                 _closeRequestInProgress = false;
                 e.Cancel = true;

@@ -307,23 +307,9 @@ public partial class NotesView : UserControl, ConvenientNote.UI.Common.IPageLife
     private bool ConfirmNotesImport(NotesBackupPreview preview)
     {
         var confirmed = false;
-        var dialog = new Window
-        {
-            Title = "确认导入",
-            WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            SizeToContent = SizeToContent.WidthAndHeight,
-            Width = 440,
-            ResizeMode = ResizeMode.NoResize,
-            ShowInTaskbar = false,
-            Background = System.Windows.Media.Brushes.White
-        };
-        var owner = Window.GetWindow(this);
-        if (owner is not null)
-        {
-            dialog.Owner = owner;
-        }
+        var dialog = new ConvenientNote.UI.Common.MaterialDialogWindow("确认导入", Window.GetWindow(this));
 
-        dialog.Content = CreateNotesImportConfirmationContent(
+        dialog.DialogContent = CreateNotesImportConfirmationContent(
             preview,
             () =>
             {
@@ -340,7 +326,7 @@ public partial class NotesView : UserControl, ConvenientNote.UI.Common.IPageLife
         Action confirm,
         Action cancel)
     {
-        var container = new Grid { Margin = new Thickness(24) };
+        var container = new Grid();
         container.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         container.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         container.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
@@ -375,6 +361,7 @@ public partial class NotesView : UserControl, ConvenientNote.UI.Common.IPageLife
             IsDefault = true
         };
         cancelButton.Click += (_, _) => cancel();
+        cancelButton.SetResourceReference(StyleProperty, "MaterialDesignFlatButton");
         var confirmButton = new Button
         {
             Content = "覆盖并导入",
@@ -383,6 +370,7 @@ public partial class NotesView : UserControl, ConvenientNote.UI.Common.IPageLife
             IsDefault = false
         };
         confirmButton.Click += (_, _) => confirm();
+        confirmButton.SetResourceReference(StyleProperty, "MaterialDesignRaisedButton");
         actions.Children.Add(cancelButton);
         actions.Children.Add(confirmButton);
         Grid.SetRow(actions, 2);
@@ -405,14 +393,13 @@ public partial class NotesView : UserControl, ConvenientNote.UI.Common.IPageLife
 
     private void ShowSimpleMessage(string message, MessageBoxImage icon)
     {
-        var owner = Window.GetWindow(this);
-        if (owner is null)
+        var title = icon switch
         {
-            MessageBox.Show(message, "Convenient Note", MessageBoxButton.OK, icon);
-            return;
-        }
-
-        MessageBox.Show(owner, message, "Convenient Note", MessageBoxButton.OK, icon);
+            MessageBoxImage.Error => "操作失败",
+            MessageBoxImage.Warning => "请留意",
+            _ => "操作完成"
+        };
+        ConvenientNote.UI.Common.MaterialDialogWindow.Inform(Window.GetWindow(this), title, message);
     }
 }
 

@@ -88,6 +88,7 @@ internal static class Program
                 Console.WriteLine("PASS compact calendar provider");
             }
             window.UpdateLayout();
+            VerifyScrollBars(current);
             if (item.Section is NavigationSection.Notes or NavigationSection.Schedule or NavigationSection.ColorPicker)
             {
                 var bitmap = new RenderTargetBitmap((int)window.ActualWidth, (int)window.ActualHeight, 96, 96, PixelFormats.Pbgra32);
@@ -100,6 +101,44 @@ internal static class Program
             Console.WriteLine($"PASS {item.ViewName}: {current.DataContext.GetType().Name}");
         }
         model.ActiveNavigationItem = model.NavigationItems.Single(i => i.Section == NavigationSection.Notes);
+        var editorSamples = new StackPanel();
+        editorSamples.Children.Add(new TextBox { Height = 80, AcceptsReturn = true, Text = string.Join("\n", Enumerable.Repeat("滚动条检查", 30)), VerticalScrollBarVisibility = ScrollBarVisibility.Auto });
+        editorSamples.Children.Add(new ListBox { Height = 80, ItemsSource = Enumerable.Range(1, 30) });
+        editorSamples.Children.Add(new RichTextBox { Height = 80, Document = new FlowDocument(new Paragraph(new Run(new string('文', 2000)))), VerticalScrollBarVisibility = ScrollBarVisibility.Auto });
+        editorSamples.Children.Add(new ConvenientNote.Views.CodeBlockControl { Height = 160 });
+        var editorWindow = new Window { Content = editorSamples, Width = 480, Height = 480, Left = -20000, Top = -20000, ShowActivated = false, ShowInTaskbar = false };
+        editorWindow.Show();
+        try
+        {
+            await editorWindow.Dispatcher.InvokeAsync(() => editorWindow.UpdateLayout(), DispatcherPriority.ApplicationIdle);
+            VerifyScrollBars(editorSamples);
+            Console.WriteLine("PASS shared scrollbars in TextBox, ListBox, RichTextBox and code editor");
+        }
+        finally { editorWindow.Close(); }
+        EventManager.RegisterClassHandler(typeof(MaterialDialogWindow), FrameworkElement.LoadedEvent,
+            new RoutedEventHandler((sender, _) =>
+            {
+                if (sender is not MaterialDialogWindow dialog) return;
+                dialog.Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    try
+                    {
+                        dialog.UpdateLayout();
+                        var preview = new RenderTargetBitmap((int)dialog.ActualWidth, (int)dialog.ActualHeight, 96, 96, PixelFormats.Pbgra32);
+                        preview.Render(dialog);
+                        var png = new PngBitmapEncoder();
+                        png.Frames.Add(BitmapFrame.Create(preview));
+                        using (var output = File.Create(Path.Combine(_directory, "Confirmation.png"))) png.Save(output);
+                        dialog.RaiseEvent(new System.Windows.Input.KeyEventArgs(System.Windows.Input.Keyboard.PrimaryDevice,
+                            PresentationSource.FromVisual(dialog)!, 0, System.Windows.Input.Key.Escape)
+                            { RoutedEvent = System.Windows.Input.Keyboard.PreviewKeyDownEvent });
+                    }
+                    catch (Exception error) { Fail(error); }
+                }), DispatcherPriority.ApplicationIdle);
+            }));
+        if (MaterialDialogWindow.Confirm(window, "退出 Convenient Note？", "退出前会保存当前编辑的内容。", "退出软件"))
+            throw new InvalidOperationException("Escape must cancel the confirmation.");
+        Console.WriteLine("PASS Material Design confirmation resources and Escape cancellation");
         Console.WriteLine("PASS startup, all navigation routes, native calendar persistence, module resources");
     }
 
@@ -108,5 +147,18 @@ internal static class Program
         Console.Error.WriteLine(error);
         File.WriteAllText(Path.Combine(_directory, "failure.txt"), error.ToString());
         Environment.Exit(1);
+    }
+
+    private static void VerifyScrollBars(DependencyObject root)
+    {
+        if (root is System.Windows.Controls.Primitives.ScrollBar bar)
+        {
+            var expected = (Style)bar.FindResource("UnifiedScrollBar");
+            var style = bar.Style;
+            while (style is not null && !ReferenceEquals(style, expected)) style = style.BasedOn;
+            if (style is null) throw new InvalidOperationException($"ScrollBar in {bar.TemplatedParent?.GetType().Name} bypasses the shared style.");
+        }
+        for (var index = 0; index < VisualTreeHelper.GetChildrenCount(root); index++)
+            VerifyScrollBars(VisualTreeHelper.GetChild(root, index));
     }
 }

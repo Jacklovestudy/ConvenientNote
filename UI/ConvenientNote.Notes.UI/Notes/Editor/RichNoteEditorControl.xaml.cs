@@ -321,8 +321,8 @@ public partial class RichNoteEditorControl : UserControl
             }
             catch (Exception error)
             {
-                MessageBox.Show(Window.GetWindow(this), "图片粘贴失败，请重试：" + error.Message,
-                    "粘贴图片", MessageBoxButton.OK, MessageBoxImage.Warning);
+                ConvenientNote.UI.Common.MaterialDialogWindow.Inform(Window.GetWindow(this),
+                    "图片粘贴失败", "请重试：" + error.Message);
             }
         }
     }

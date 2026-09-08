@@ -23,8 +23,8 @@ public partial class App : PrismApplication
         }
         catch (Exception exception)
         {
-            MessageBox.Show("软件初始化失败，原始数据已保留。请关闭其他实例后重试。\n\n" + exception.Message,
-                "启动失败", MessageBoxButton.OK, MessageBoxImage.Error);
+            MaterialDialogWindow.Inform(null, "启动失败",
+                "软件初始化失败，原始数据已保留。请关闭其他实例后重试。\n\n" + exception.Message);
             Shutdown(1);
         }
     }

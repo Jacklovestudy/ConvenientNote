@@ -11,6 +11,7 @@
                                              SecondaryColor="Teal" />
                 <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesign3.Defaults.xaml" />
                 <ResourceDictionary Source="pack://application:,,,/ConvenientNote.UI.Common;component/WindowControls.xaml" />
+                <ResourceDictionary Source="pack://application:,,,/ConvenientNote.UI.Common;component/ScrollControls.xaml" />
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </Application.Resources>
