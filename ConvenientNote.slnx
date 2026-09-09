@@ -6,6 +6,7 @@
     <Project Path="UI/ConvenientNote.Calendar.UI/ConvenientNote.Calendar.UI.csproj" />
     <Project Path="UI/ConvenientNote.Desktop/ConvenientNote.Desktop.csproj" />
     <Project Path="UI/ConvenientNote.ColorPicker.UI/ConvenientNote.ColorPicker.UI.csproj" />
+    <Project Path="UI/ConvenientNote.DesktopPet.UI/ConvenientNote.DesktopPet.UI.csproj" />
   </Folder>
   <Folder Name="/src/" />
   <Folder Name="/src/App/">
@@ -13,24 +14,28 @@
     <Project Path="src/App/ConvenientNote.Calendar.Application/ConvenientNote.Calendar.Application.csproj" />
     <Project Path="src/App/ConvenientNote.Todos.Application/ConvenientNote.Todos.Application.csproj" />
     <Project Path="src/App/ConvenientNote.Notes.Application/ConvenientNote.Notes.Application.csproj" />
+    <Project Path="src/App/ConvenientNote.DesktopPet.Application/ConvenientNote.DesktopPet.Application.csproj" />
   </Folder>
   <Folder Name="/src/Modules/">
     <Project Path="src/Modules/ConvenientNote.ColorPicker.Domain/ConvenientNote.ColorPicker.Domain.csproj" />
     <Project Path="src/Modules/ConvenientNote.Calendar.Domain/ConvenientNote.Calendar.Domain.csproj" />
     <Project Path="src/Modules/ConvenientNote.Todos.Domain/ConvenientNote.Todos.Domain.csproj" />
     <Project Path="src/Modules/ConvenientNote.Notes.Domain/ConvenientNote.Notes.Domain.csproj" />
+    <Project Path="src/Modules/ConvenientNote.DesktopPet.Domain/ConvenientNote.DesktopPet.Domain.csproj" />
   </Folder>
   <Folder Name="/src/Infrastructure/">
     <Project Path="src/Infrastructure/ConvenientNote.Todos.Infrastructure/ConvenientNote.Todos.Infrastructure.csproj" />
     <Project Path="src/Infrastructure/ConvenientNote.Notes.Infrastructure/ConvenientNote.Notes.Infrastructure.csproj" />
     <Project Path="src/Infrastructure/ConvenientNote.Calendar.Infrastructure/ConvenientNote.Calendar.Infrastructure.csproj" />
     <Project Path="src/Infrastructure/ConvenientNote.ColorPicker.Infrastructure/ConvenientNote.ColorPicker.Infrastructure.csproj" />
+    <Project Path="src/Infrastructure/ConvenientNote.DesktopPet.Infrastructure/ConvenientNote.DesktopPet.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/src/Contracts/">
     <Project Path="src/Contracts/ConvenientNote.Todos.Contracts/ConvenientNote.Todos.Contracts.csproj" />
     <Project Path="src/Contracts/ConvenientNote.Calendar.Contracts/ConvenientNote.Calendar.Contracts.csproj" />
     <Project Path="src/Contracts/ConvenientNote.ColorPicker.Contracts/ConvenientNote.ColorPicker.Contracts.csproj" />
     <Project Path="src/Contracts/ConvenientNote.Notes.Contracts/ConvenientNote.Notes.Contracts.csproj" />
+    <Project Path="src/Contracts/ConvenientNote.DesktopPet.Contracts/ConvenientNote.DesktopPet.Contracts.csproj" />
   </Folder>
   <Folder Name="/src/Shared/">
     <Project Path="src/Shared/ConvenientNote.Platform.Infrastructure/ConvenientNote.Platform.Infrastructure.csproj" />
@@ -51,5 +56,6 @@
     <Project Path="tests/ConvenientNote.Notes.Tests/ConvenientNote.Notes.Tests.csproj" />
     <Project Path="tests/ConvenientNote.Architecture.Tests/ConvenientNote.Architecture.Tests.csproj" />
     <Project Path="tests/ConvenientNote.Tests/ConvenientNote.Tests.csproj" />
+    <Project Path="tests/ConvenientNote.DesktopPet.Tests/ConvenientNote.DesktopPet.Tests.csproj" />
   </Folder>
 </Solution>

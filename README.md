@@ -4,7 +4,7 @@
 
 ## 架构与入口
 
-项目采用模块化单体架构。待办、笔记、日历、取色器各有独立的 Domain、Application、Infrastructure、UI、Contracts 项目。
+项目采用模块化单体架构。待办、笔记、日历、取色器、桌宠各有独立的 Domain、Application、Infrastructure、UI、Contracts 项目。
 
 ```text
 UI/ConvenientNote.Desktop/         桌面启动入口、主窗口与模块装配
@@ -12,11 +12,12 @@ UI/ConvenientNote.Notes.UI/        笔记与回收站界面
 UI/ConvenientNote.Todos.UI/        待办界面
 UI/ConvenientNote.Calendar.UI/     日历界面
 UI/ConvenientNote.ColorPicker.UI/  取色器界面
+UI/ConvenientNote.DesktopPet.UI/   鹈鹕桌宠界面
 UI/ConvenientNote.UI.Common/       公共界面控件与样式
-src/App/                          四个模块的 Application 项目
-src/Modules/                      四个模块的 Domain 项目
-src/Infrastructure/               四个模块的存储与平台实现
-src/Contracts/                    四个模块的公开接口
+src/App/                          五个模块的 Application 项目
+src/Modules/                      五个模块的 Domain 项目
+src/Infrastructure/               五个模块的存储与平台实现
+src/Contracts/                    五个模块的公开接口
 src/Shared/                       工作区身份、通用界面契约与样式
 src/Compatibility/                旧格式读取与一次性数据迁移
 tests/                            模块、迁移、架构及界面回归测试
@@ -35,6 +36,10 @@ dotnet run --project UI/ConvenientNote.Desktop/ConvenientNote.Desktop.csproj
 ## 取色器
 
 导航中的“取色器”支持屏幕取色、颜色预览、HEX/RGB 复制，以及最近 32 种颜色。点击“屏幕取色”后单击确认，Esc 取消。使用取色前的屏幕快照，避免浮层干扰颜色。历史保存在 `ColorPicker/history.json`；读取异常时保留原文件并显示只读警告。
+
+## 鹈鹕桌宠
+
+导航中打开“鹈鹕桌宠”，点击“显示桌宠”。支持骑行、加速、刹车、歪头、拖动和打盹，右键菜单与 60%～160% 大小调整。设置和位置会自动保存，退出软件时关闭。详见[桌宠说明](docs/modules/DesktopPet.md)。
 
 ## 日历与桌面模式
 

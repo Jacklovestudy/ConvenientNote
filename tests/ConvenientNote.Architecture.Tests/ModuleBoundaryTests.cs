@@ -14,6 +14,7 @@ public sealed class ModuleBoundaryTests
     [InlineData("Notes")]
     [InlineData("Calendar")]
     [InlineData("ColorPicker")]
+    [InlineData("DesktopPet")]
     public void Each_module_has_exactly_five_layer_projects(string module)
     {
         string[] layers = ["Application", "Contracts", "Domain", "Infrastructure", "UI"];
@@ -142,7 +143,7 @@ public sealed class ModuleBoundaryTests
         var relative = Relative(path).Split('/');
         var name = Path.GetFileNameWithoutExtension(path);
         var segments = name.Split('.');
-        string? module = segments.Length == 3 && new[] { "Notes", "Todos", "Calendar", "ColorPicker" }.Contains(segments[1]) ? segments[1] : null;
+        string? module = segments.Length == 3 && new[] { "Notes", "Todos", "Calendar", "ColorPicker", "DesktopPet" }.Contains(segments[1]) ? segments[1] : null;
         var references = document.Descendants().Where(e => e.Name.LocalName == "ProjectReference")
             .Select(e => e.Attribute("Include")?.Value)
             .Where(value => !string.IsNullOrWhiteSpace(value))

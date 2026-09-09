@@ -1,6 +1,6 @@
 # 模块化架构约定
 
-本软件采用 WPF 模块化单体：一个桌面进程，四个独立业务模块。模块拥有自己的 UI、应用操作、领域模型、数据存储和公开契约。独立项目用于约束依赖，不要求每个模块具有相同数量的实体或服务。
+本软件采用 WPF 模块化单体：一个桌面进程，五个独立业务模块。模块拥有自己的 UI、应用操作、领域模型、数据存储和公开契约。独立项目用于约束依赖，不要求每个模块具有相同数量的实体或服务。
 
 ## 项目与依赖
 
@@ -11,12 +11,13 @@ UI/
   ConvenientNote.Todos.UI/            待办界面
   ConvenientNote.Calendar.UI/         日历界面
   ConvenientNote.ColorPicker.UI/      取色器界面
+  ConvenientNote.DesktopPet.UI/       鹈鹕桌宠与设置页
   ConvenientNote.UI.Common/           窗口样式、界面生命周期与传输协调
 src/
-  App/                               四个模块的 Application 项目
-  Modules/                           四个模块的 Domain 项目
-  Infrastructure/                    四个模块的存储与平台实现
-  Contracts/                         四个模块的公开接口
+  App/                               五个模块的 Application 项目
+  Modules/                           五个模块的 Domain 项目
+  Infrastructure/                    五个模块的存储与平台实现
+  Contracts/                         五个模块的公开接口
   Shared/
     ConvenientNote.Platform.Contracts/       工作区身份接口
     ConvenientNote.Platform.Infrastructure/  工作区元数据和启动迁移标记
@@ -41,6 +42,7 @@ src/
 | Todos | 独立 TodoItem、优先级、完成和计划日期 | `todos_items`、天气服务实现 | 今日待办、待办箱、已完成 |
 | Calendar | 独立 CalendarEvent、时间范围、全天/定时日程、改期 | `Calendar_Events` | 完整日历与精简日历 |
 | ColorPicker | ColorValue、最近颜色及历史操作 | `ColorPicker/history.json`、Windows 屏幕采集 | 取色页面、取色浮层 |
+| DesktopPet | 动作状态、设置与位置 | `DesktopPet/settings.json` | 鹈鹕窗口、矢量动画与设置页 |
 
 Calendar 可以不接入待办模块。接入时 Host 的 `TodoScheduleAdapter` 将 `ITodoCalendarApi` 转换为日历的 `ITodoScheduleSource`。待办投影不持久化为日程；待办改期/完成调用 Todos，独立日程改期/完成调用 Calendar。两类数据可以拥有相同 Guid，仍以来源区分。
 

@@ -2,6 +2,8 @@ using System.IO;
 using System.Windows;
 using ConvenientNote.LegacyMigration;
 using ConvenientNote.UI.Common;
+using ConvenientNote.DesktopPet.UI;
+using ConvenientNote.ViewModels;
 using Prism.DryIoc;
 using Prism.Ioc;
 
@@ -34,7 +36,26 @@ public partial class App : PrismApplication
         base.OnInitialized();
         ShutdownMode = ShutdownMode.OnMainWindowClose;
         if (MainWindow is MainWindow window)
+        {
             window.InitializeCompactMode(Container.Resolve<ICompactModeProvider>());
+            var pet = Container.Resolve<PetController>();
+            pet.OpenSettings += () =>
+            {
+                window.ExitCompactCalendar();
+                window.Show();
+                if (window.WindowState == WindowState.Minimized) window.WindowState = WindowState.Normal;
+                window.Activate();
+                if (window.DataContext is MainWindowViewModel model)
+                    model.ActiveNavigationItem = model.NavigationItems.Single(i => i.Section == NavigationSection.DesktopPet);
+            };
+            pet.Restore();
+        }
+    }
+
+    protected override void OnExit(ExitEventArgs e)
+    {
+        if (Container is not null && Container.IsRegistered<PetController>()) Container.Resolve<PetController>().Shutdown();
+        base.OnExit(e);
     }
 
     protected override Window CreateShell() => Container.Resolve<MainWindow>();

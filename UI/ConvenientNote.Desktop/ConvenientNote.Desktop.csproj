@@ -14,6 +14,8 @@
     <PackageReference Include="Prism.DryIoc" Version="9.0.537" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="../ConvenientNote.DesktopPet.UI/ConvenientNote.DesktopPet.UI.csproj" />
+    <ProjectReference Include="../../src/Infrastructure/ConvenientNote.DesktopPet.Infrastructure/ConvenientNote.DesktopPet.Infrastructure.csproj" />
     <ProjectReference Include="../../src/Compatibility/ConvenientNote.LegacyMigration/ConvenientNote.LegacyMigration.csproj" />
     <ProjectReference Include="../ConvenientNote.UI.Common/ConvenientNote.UI.Common.csproj" />
     <ProjectReference Include="../ConvenientNote.Notes.UI/ConvenientNote.Notes.UI.csproj" />

@@ -11,7 +11,8 @@ namespace ConvenientNote
         Review,
         Completed,
         Trash,
-        ColorPicker
+        ColorPicker,
+        DesktopPet
     }
 
     public sealed record NavigationItemViewModel(

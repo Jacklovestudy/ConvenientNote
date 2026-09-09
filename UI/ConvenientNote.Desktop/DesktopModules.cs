@@ -1,4 +1,8 @@
 using System.IO;
+using ConvenientNote.DesktopPet.Application;
+using ConvenientNote.DesktopPet.Contracts;
+using ConvenientNote.DesktopPet.Infrastructure;
+using ConvenientNote.DesktopPet.UI;
 using ConvenientNote.Calendar.Application;
 using ConvenientNote.Calendar.Contracts;
 using ConvenientNote.Calendar.Infrastructure;
@@ -74,6 +78,11 @@ public static class DesktopModules
         registry.RegisterInstance<IScreenCapture>(new WindowsScreenCapture());
         registry.RegisterForNavigation<ColorPickerView>();
         registry.RegisterForNavigation<ReviewView>();
+        var petPreferences = new PetPreferencesService(new JsonPetPreferencesStore(Path.Combine(directory, "DesktopPet", "settings.json")));
+        var pet = new PetController(petPreferences);
+        registry.RegisterInstance(pet);
+        registry.RegisterInstance<IDesktopPet>(pet);
+        registry.RegisterForNavigation<DesktopPetView>();
 
         registry.RegisterInstance(new NavigationCatalog([
             new(NavigationSection.DayTodo, nameof(DayTodoView), "今日待办", "今天要处理的待办", PackIconKind.CalendarToday),
@@ -81,6 +90,7 @@ public static class DesktopModules
             new(NavigationSection.Schedule, nameof(ScheduleView), "日历", "日程与待办安排", PackIconKind.CalendarMonth),
             new(NavigationSection.Inbox, nameof(InboxView), "待办箱", "未完成事项", PackIconKind.Inbox),
             new(NavigationSection.ColorPicker, nameof(ColorPickerView), "取色器", "屏幕取色与颜色历史", PackIconKind.Eyedropper),
+            new(NavigationSection.DesktopPet, nameof(DesktopPetView), "鹈鹕桌宠", "骑着单车的桌面伙伴", PackIconKind.Bird),
             new(NavigationSection.Review, nameof(ReviewView), "数据复盘", "完成情况", PackIconKind.ChartLine),
             new(NavigationSection.Completed, nameof(CompletedTodoView), "已达成", "已完成事项", PackIconKind.CheckCircleOutline),
             new(NavigationSection.Trash, nameof(TrashView), "回收站", "删除的笔记", PackIconKind.DeleteOutline)

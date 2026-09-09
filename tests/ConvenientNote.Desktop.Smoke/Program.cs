@@ -13,6 +13,7 @@ namespace ConvenientNote.Desktop.Smoke;
 internal static class Program
 {
     private static string _directory = "";
+    private static ConvenientNote.DesktopPet.UI.PelicanWindow? _petWindow;
 
     [STAThread]
     private static int Main(string[] args)
@@ -26,6 +27,12 @@ internal static class Program
         EventManager.RegisterClassHandler(typeof(Window), FrameworkElement.LoadedEvent,
             new RoutedEventHandler((sender, _) =>
             {
+                if (sender is ConvenientNote.DesktopPet.UI.PelicanWindow petWindow)
+                {
+                    petWindow.Opacity = 0;
+                    _petWindow = petWindow;
+                    return;
+                }
                 if (sender is not MainWindow window) return;
                 window.Left = -20000;
                 window.Top = -20000;
@@ -87,9 +94,32 @@ internal static class Program
                 window.ExitCompactCalendar();
                 Console.WriteLine("PASS compact calendar provider");
             }
+            if (current.DataContext is ConvenientNote.DesktopPet.UI.PetController pet)
+            {
+                pet.Show();
+                await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
+                if (!pet.IsVisible || _petWindow is null) throw new InvalidOperationException("Pet could not be shown: " + pet.Status);
+                var firstWindow = _petWindow;
+                var phase = firstWindow.Artwork.Phase;
+                await Task.Delay(150);
+                if (phase == firstWindow.Artwork.Phase) throw new InvalidOperationException("Pet animation did not advance.");
+                pet.SetScale(.8);
+                if (Math.Abs(firstWindow.Width - 208) > .01) throw new InvalidOperationException("Pet size was not applied.");
+                pet.Shutdown();
+                var stoppedPhase = firstWindow.Artwork.Phase;
+                await Task.Delay(100);
+                if (stoppedPhase != firstWindow.Artwork.Phase) throw new InvalidOperationException("Pet timer survived shutdown.");
+                pet.Restore();
+                await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
+                if (!pet.IsVisible || ReferenceEquals(firstWindow, _petWindow)) throw new InvalidOperationException("Pet did not restore after shutdown.");
+                pet.Hide();
+                if (pet.IsVisible) throw new InvalidOperationException("Pet did not hide.");
+                pet.SetScale(1);
+                Console.WriteLine("PASS pet show, animation, resize, shutdown, restore and hide");
+            }
             window.UpdateLayout();
             VerifyScrollBars(current);
-            if (item.Section is NavigationSection.Notes or NavigationSection.Schedule or NavigationSection.ColorPicker)
+            if (item.Section is NavigationSection.Notes or NavigationSection.Schedule or NavigationSection.ColorPicker or NavigationSection.DesktopPet)
             {
                 var bitmap = new RenderTargetBitmap((int)window.ActualWidth, (int)window.ActualHeight, 96, 96, PixelFormats.Pbgra32);
                 bitmap.Render(window);
@@ -101,6 +131,7 @@ internal static class Program
             Console.WriteLine($"PASS {item.ViewName}: {current.DataContext.GetType().Name}");
         }
         model.ActiveNavigationItem = model.NavigationItems.Single(i => i.Section == NavigationSection.Notes);
+        RenderPelicanActions();
         var editorSamples = new StackPanel();
         editorSamples.Children.Add(new TextBox { Height = 80, AcceptsReturn = true, Text = string.Join("\n", Enumerable.Repeat("滚动条检查", 30)), VerticalScrollBarVisibility = ScrollBarVisibility.Auto });
         editorSamples.Children.Add(new ListBox { Height = 80, ItemsSource = Enumerable.Range(1, 30) });
@@ -160,5 +191,30 @@ internal static class Program
         }
         for (var index = 0; index < VisualTreeHelper.GetChildrenCount(root); index++)
             VerifyScrollBars(VisualTreeHelper.GetChild(root, index));
+    }
+
+    private static void RenderPelicanActions()
+    {
+        var sheet = new DrawingVisual();
+        using (var drawing = sheet.RenderOpen())
+        {
+            drawing.DrawRectangle(new SolidColorBrush(Color.FromRgb(241, 246, 238)), null, new Rect(0, 0, 1080, 700));
+            var actions = Enum.GetValues<ConvenientNote.DesktopPet.Domain.PetAction>();
+            string[] labels = ["慢骑", "加速", "刹车", "歪头", "拎起", "打盹"];
+            for (var i = 0; i < actions.Length; i++)
+            {
+                var artwork = new ConvenientNote.DesktopPet.UI.PelicanVisual();
+                artwork.Measure(new Size(360, 310)); artwork.Arrange(new Rect(0, 0, 360, 310));
+                artwork.Update(actions[i], .7, .4, 1); artwork.UpdateLayout();
+                var frame = new RenderTargetBitmap(360, 310, 96, 96, PixelFormats.Pbgra32); frame.Render(artwork);
+                var x = i % 3 * 360; var y = i / 3 * 350;
+                drawing.DrawImage(frame, new Rect(x, y, 360, 310));
+                drawing.DrawText(new FormattedText(labels[i], System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
+                    new Typeface("Microsoft YaHei UI"), 18, Brushes.DarkSlateGray, 1), new Point(x + 155, y + 315));
+            }
+        }
+        var bitmap = new RenderTargetBitmap(1080, 700, 96, 96, PixelFormats.Pbgra32); bitmap.Render(sheet);
+        var png = new PngBitmapEncoder(); png.Frames.Add(BitmapFrame.Create(bitmap));
+        using var file = File.Create(Path.Combine(_directory, "PelicanActions.png")); png.Save(file);
     }
 }
