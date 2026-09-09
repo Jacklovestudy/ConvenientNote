@@ -219,6 +219,8 @@ internal static class Program
                 if (interaction)
                 {
                     artwork.IsAttentive = true;
+                    artwork.FrontFacing = i is 0 or 2 or 3 ? 1 : 0;
+                    artwork.BubbleOpacity = i is 0 or 2 or 3 ? 1 : 0;
                     artwork.AttentionTilt = i is 1 or 2 or 3 ? 1 : 0;
                     artwork.IsPetting = i == 2;
                     artwork.Pointer = new Point(190, 28);

@@ -13,6 +13,42 @@ namespace ConvenientNote.Tests.Views;
 public sealed class PelicanWindowTests
 {
     [Fact]
+    public void FrontPoseHasTwoEyesAndNoLongSidewaysBill() => Sta(() =>
+    {
+        var artwork = new PelicanVisual { FrontFacing = 1 };
+        artwork.Measure(new Size(360, 310)); artwork.Arrange(new Rect(0, 0, 360, 310));
+        var pixels = Pixels(artwork, PetAction.Ride, 0);
+        foreach (var eyeX in new[] { 194, 222 })
+        {
+            var index = (43 * 360 + eyeX) * 4;
+            Assert.Equal(255, pixels[index + 3]);
+            Assert.True(pixels[index + 2] < 100, "Both front-facing eyes must be visible.");
+        }
+        Assert.Equal(0, pixels[(70 * 360 + 300) * 4 + 3]);
+    });
+
+    [Fact]
+    public void HoverFacesTheViewerWithoutTurningTheBicycle() => Sta(() =>
+    {
+        var window = new PelicanWindow(new PetPreferences(), () => { }, () => { }, () => { }) { Opacity = 0 };
+        try
+        {
+            window.Show(); window.UpdateLayout();
+            var scale = window.Artwork.ActualWidth / 360;
+            new RenderTargetBitmap(360, 310, 96, 96, PixelFormats.Pbgra32).Render(window.Artwork);
+            for (var i = 0; i < 15; i++) window.UpdatePointerInteraction(.1, new Point(140 * scale, 150 * scale));
+            Assert.True(window.Artwork.FrontFacing > .9);
+            Assert.True(window.Artwork.BubbleOpacity > .9);
+            Assert.Equal(1, window.Motion.Direction);
+            for (var i = 0; i < 15; i++) window.UpdatePointerInteraction(.1, null);
+            Assert.True(window.Artwork.FrontFacing < .1);
+            Assert.True(window.Artwork.BubbleOpacity < .1);
+            Assert.Equal(1, window.Motion.Direction);
+        }
+        finally { window.Close(); }
+    });
+
+    [Fact]
     public void CollisionFramesStayInsideWindowInBothDirections() => Sta(() =>
     {
         var artwork = new PelicanVisual();

@@ -21,6 +21,8 @@ public sealed class PelicanVisual : FrameworkElement
     public bool IsAttentive { get; set; }
     public bool IsPetting { get; set; }
     public double AttentionTilt { get; set; }
+    public double FrontFacing { get; set; }
+    public double BubbleOpacity { get; set; }
     public double? RestAmount { get; set; }
     public Point? Pointer { get; set; }
     private Transform _headRotation = Transform.Identity;
@@ -139,7 +141,8 @@ public sealed class PelicanVisual : FrameworkElement
 
         var resting = crashing ? 0 : RestAmount ?? (Action == PetAction.Sleep ? 1 : 0);
         var awakeTilt = (Action == PetAction.React ? -12 * Math.Sin(Math.Min(ActionAge, 1.4) / 1.4 * Math.PI) : 0) - AttentionTilt * 7;
-        var headTilt = 48 * resting + awakeTilt * (1 - resting);
+        var front = Action is PetAction.Crash or PetAction.Drag or PetAction.Sleep ? 0 : Math.Clamp(FrontFacing, 0, 1);
+        var headTilt = 48 * resting + awakeTilt * (1 - resting) * (1 - front);
         var headRotation = new RotateTransform(headTilt, 200, 99);
         _headRotation = headRotation;
         // The tail shares the collar's attachment points; its free end can still flutter.
@@ -186,16 +189,45 @@ public sealed class PelicanVisual : FrameworkElement
         dc.PushTransform(headRotation);
         Shape(dc, "M 181,99 Q 199,108 221,101 L 220,113 Q 197,119 180,110 Z", Scarf, Pen(Brush("#B3553C"), 1.5));
         Shape(dc, "M 192,27 Q 188,17 179,15 Q 191,14 200,25 M 203,23 Q 198,10 201,5 Q 212,14 213,24", Cream, Outline);
+        // A separate foreshortened bill faces the viewer. Never mirror or fold the head.
+        dc.PushOpacity(1 - front);
+        dc.PushTransform(new TranslateTransform(-19 * front, 0));
+        dc.PushTransform(new ScaleTransform(1 - .7 * front, 1, 226, 58));
+        var mouthOpen = crashing ? Ease(ActionAge / .12) * (1 - Ease((ActionAge - 1.65) / .45)) : 0;
+        var lowerBeak = new RotateTransform(24 * mouthOpen, 226, 58);
+        if (mouthOpen > 0)
+        {
+            var mouth = new StreamGeometry();
+            using (var c = mouth.Open())
+            {
+                c.BeginFigure(new Point(226, 58), true, true);
+                c.LineTo(new Point(330, 75), true, false);
+                c.LineTo(lowerBeak.Transform(new Point(323, 71)), true, false);
+            }
+            dc.DrawGeometry(Brush("#9D5334"), null, mouth);
+        }
+        dc.PushTransform(lowerBeak);
         Shape(dc, "M 226,58 Q 227,103 255,107 Q 287,111 323,71 Z", Orange);
         Shape(dc, "M 233,64 Q 237,90 259,95 Q 281,99 308,79", null, Pen(Brush("#FFDA79"), 2.4));
+        dc.Pop();
         Shape(dc, "M 224,52 Q 223,45 231,47 L 332,67 Q 340,70 330,75 Q 269,72 227,63 Q 222,60 224,52 Z", Gold);
         Shape(dc, "M 235,52 L 311,67", null, Pen(Brush("#FFE396"), 2.2));
+        dc.Pop(); dc.Pop(); dc.Pop();
+        if (front > 0)
+        {
+            dc.PushOpacity(front);
+            Shape(dc, "M 187,72 C 187,101 228,101 228,72 Z", Orange);
+            Shape(dc, "M 198,54 Q 207,49 216,54 L 230,73 Q 208,86 185,73 Z", Gold);
+            Shape(dc, "M 207,57 L 207,75 M 194,83 Q 207,94 221,83", null, Pen(Brush("#FFDA79"), 2));
+            dc.Pop();
+        }
         var blinking = Action == PetAction.Sleep || IsPetting || (crashing && ActionAge < 1.8) || Math.Sin(Phase * .21) > .994;
+        dc.PushTransform(new TranslateTransform(7 * front, 0));
         if (blinking) Shape(dc, "M 208,45 Q 214,50 220,44", null, Outline);
         else
         {
             var gaze = new Vector();
-            if (Pointer is { } pointer)
+            if (Pointer is { } pointer && front < .5)
             {
                 var target = ToDesignPoint(pointer);
                 target.Y -= bob;
@@ -206,7 +238,20 @@ public sealed class PelicanVisual : FrameworkElement
             dc.DrawEllipse(Ink, null, new Point(215, 43) + gaze, 3.8, 5);
             dc.DrawEllipse(Brush("#FFFFFF"), null, new Point(216, 41) + gaze, 1.1, 1.3);
         }
-        dc.DrawEllipse(Brush("#F3BB93"), null, new Point(211, 60), 5, 3);
+        dc.Pop();
+        if (front > 0)
+        {
+            dc.PushOpacity(front);
+            if (blinking) Shape(dc, "M 188,45 Q 194,50 200,44", null, Outline);
+            else
+            {
+                dc.DrawEllipse(Ink, null, new Point(194, 43), 3.8, 5);
+                dc.DrawEllipse(Brush("#FFFFFF"), null, new Point(195, 41), 1.1, 1.3);
+            }
+            dc.DrawEllipse(Brush("#F3BB93"), null, new Point(190, 58), 4, 3);
+            dc.Pop();
+        }
+        dc.DrawEllipse(Brush("#F3BB93"), null, new Point(211 + 15 * front, 60), 5, 3);
         dc.Pop();
         dc.Pop(); // Keep the hand on the handlebar while the torso leans.
 
@@ -239,6 +284,31 @@ public sealed class PelicanVisual : FrameworkElement
         }
         dc.Pop(); dc.Pop();
         if (Direction < 0) dc.Pop();
+        // Draw text after undoing the character's mirror, so it reads normally both ways.
+        if (BubbleOpacity > .01 && Action is not (PetAction.Crash or PetAction.Drag or PetAction.Boost))
+        {
+            var opacity = Math.Clamp(BubbleOpacity, 0, 1);
+            const double bubbleWidth = 166, bubbleHeight = 60;
+            var x = Direction < 0 ? 192d : 2d;
+            var y = 4 + (1 - opacity) * 5;
+            var fill = Brush("#FFFEF6");
+            var border = Pen(Brush("#8FA99A"), 1.5);
+            dc.PushOpacity(opacity);
+            dc.DrawRoundedRectangle(Brush("#18000000"), null, new Rect(x, y + 3, bubbleWidth, bubbleHeight), 17, 17);
+            var tail = new StreamGeometry();
+            using (var c = tail.Open())
+            {
+                c.BeginFigure(new Point(Direction < 0 ? x + 4 : x + bubbleWidth - 4, y + 32), true, true);
+                c.LineTo(new Point(Direction < 0 ? 178 : 182, y + 48), true, false);
+                c.LineTo(new Point(Direction < 0 ? x + 9 : x + bubbleWidth - 9, y + 46), true, false);
+            }
+            dc.DrawGeometry(fill, border, tail);
+            dc.DrawRoundedRectangle(fill, border, new Rect(x, y, bubbleWidth, bubbleHeight), 17, 17);
+            var caption = new FormattedText("你瞅啥？", System.Globalization.CultureInfo.GetCultureInfo("zh-CN"), FlowDirection.LeftToRight,
+                new Typeface("Microsoft YaHei UI"), 28, Ink, VisualTreeHelper.GetDpi(this).PixelsPerDip);
+            dc.DrawText(caption, new Point(x + (bubbleWidth - caption.Width) / 2, y + (bubbleHeight - caption.Height) / 2));
+            dc.Pop();
+        }
         dc.Pop(); dc.Pop();
     }
 

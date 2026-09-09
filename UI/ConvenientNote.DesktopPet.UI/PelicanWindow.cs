@@ -47,7 +47,6 @@ public sealed class PelicanWindow : Window
         Top = preferences.Top ?? SystemParameters.WorkArea.Bottom - Height - 8;
         Content = _visual;
         AutomationProperties.SetName(_visual, "骑行鹈鹕：单击歪头，双击加速，按住拖动，右键设置");
-        _visual.ToolTip = "停留互动 · 来回摸头 · 单击歪头 · 双击加速 · 按住拖动 · 右键设置";
         var menu = new ContextMenu();
         AddMenu(menu, "骑一会儿", () => Motion.Ride());
         AddMenu(menu, "打个盹", () => Motion.Sleep());
@@ -153,6 +152,10 @@ public sealed class PelicanWindow : Window
         _visual.IsAttentive = _attention.IsHovering;
         _visual.IsPetting = _attention.IsPetting;
         _visual.AttentionTilt += ((_attention.IsHovering ? 1 : 0) - _visual.AttentionTilt) * Math.Min(1, seconds * 6);
+        var frontTarget = _attention.IsHovering && Motion.Action != PetAction.Sleep ? 1d : 0d;
+        _visual.FrontFacing += (frontTarget - _visual.FrontFacing) * Math.Min(1, seconds * 7);
+        var bubbleTarget = _attention.IsHovering ? 1d : 0d;
+        _visual.BubbleOpacity += (bubbleTarget - _visual.BubbleOpacity) * Math.Min(1, seconds * 9);
         _visual.Pointer = blocked ? null : pointer;
         return _attention.IsHovering;
     }
