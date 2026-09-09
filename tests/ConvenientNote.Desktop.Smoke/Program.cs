@@ -103,6 +103,14 @@ internal static class Program
                 var phase = firstWindow.Artwork.Phase;
                 await Task.Delay(150);
                 if (phase == firstWindow.Artwork.Phase) throw new InvalidOperationException("Pet animation did not advance.");
+                var speedSlider = (Slider)current.FindName("SpeedSlider");
+                speedSlider.Value = 40;
+                await Task.Delay(350);
+                if (pet.RidingSpeed != 40 || firstWindow.Motion.RidingSpeed != 40) throw new InvalidOperationException("Speed slider did not update the live pet.");
+                firstWindow.Motion.Boost();
+                if (firstWindow.Motion.Speed != 80) throw new InvalidOperationException("Boost is not twice the configured speed.");
+                pet.SetRidingSpeed(55);
+                if (firstWindow.Motion.Speed != 110) throw new InvalidOperationException("Boost did not track the changed speed.");
                 pet.SetScale(.8);
                 if (Math.Abs(firstWindow.Width - 208) > .01) throw new InvalidOperationException("Pet size was not applied.");
                 pet.Shutdown();
@@ -112,9 +120,12 @@ internal static class Program
                 pet.Restore();
                 await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
                 if (!pet.IsVisible || ReferenceEquals(firstWindow, _petWindow)) throw new InvalidOperationException("Pet did not restore after shutdown.");
+                if (_petWindow!.Motion.RidingSpeed != 55) throw new InvalidOperationException("Pet did not restore configured speed.");
                 pet.Hide();
                 if (pet.IsVisible) throw new InvalidOperationException("Pet did not hide.");
                 pet.SetScale(1);
+                pet.SetRidingSpeed(22);
+                Console.WriteLine("PASS speed slider, live boost multiplier and restored speed");
                 Console.WriteLine("PASS pet show, animation, resize, shutdown, restore and hide");
             }
             window.UpdateLayout();
@@ -193,19 +204,34 @@ internal static class Program
             VerifyScrollBars(VisualTreeHelper.GetChild(root, index));
     }
 
-    private static void RenderPelicanActions()
+    private static void RenderPelicanActions(bool interaction = false, bool collision = false)
     {
         var sheet = new DrawingVisual();
         using (var drawing = sheet.RenderOpen())
         {
             drawing.DrawRectangle(new SolidColorBrush(Color.FromRgb(241, 246, 238)), null, new Rect(0, 0, 1080, 700));
-            var actions = Enum.GetValues<ConvenientNote.DesktopPet.Domain.PetAction>();
-            string[] labels = ["慢骑", "加速", "刹车", "歪头", "拎起", "打盹"];
+            var actions = Enum.GetValues<ConvenientNote.DesktopPet.Domain.PetAction>().Take(6).ToArray();
+            string[] labels = interaction ? ["视线跟随", "悬停歪头", "摸头眯眼", "向左互动", "缓缓醒来", "打盹等待"] : ["慢骑", "加速", "刹车", "歪头", "拎起", "打盹"];
+            if (collision) labels = ["碰撞", "滑下车", "坐着发懵", "爬回车座", "重新上车", "往回骑"];
             for (var i = 0; i < actions.Length; i++)
             {
                 var artwork = new ConvenientNote.DesktopPet.UI.PelicanVisual();
+                if (interaction)
+                {
+                    artwork.IsAttentive = true;
+                    artwork.AttentionTilt = i is 1 or 2 or 3 ? 1 : 0;
+                    artwork.IsPetting = i == 2;
+                    artwork.Pointer = new Point(190, 28);
+                    artwork.RestAmount = i == 4 ? .5 : i == 5 ? 1 : 0;
+                }
                 artwork.Measure(new Size(360, 310)); artwork.Arrange(new Rect(0, 0, 360, 310));
-                artwork.Update(actions[i], .7, .4, 1); artwork.UpdateLayout();
+                artwork.Update(interaction ? (i == 5 ? ConvenientNote.DesktopPet.Domain.PetAction.Sleep : ConvenientNote.DesktopPet.Domain.PetAction.Ride) : actions[i], .7, .4, interaction && i == 3 ? -1 : 1); artwork.UpdateLayout();
+                if (collision)
+                {
+                    double[] ages = [.15, .55, 1.2, 2.2, 2.85, 0];
+                    artwork.Update(i == 5 ? ConvenientNote.DesktopPet.Domain.PetAction.Ride : ConvenientNote.DesktopPet.Domain.PetAction.Crash, .7, ages[i], i == 5 ? -1 : 1);
+                    artwork.UpdateLayout();
+                }
                 var frame = new RenderTargetBitmap(360, 310, 96, 96, PixelFormats.Pbgra32); frame.Render(artwork);
                 var x = i % 3 * 360; var y = i / 3 * 350;
                 drawing.DrawImage(frame, new Rect(x, y, 360, 310));
@@ -215,6 +241,7 @@ internal static class Program
         }
         var bitmap = new RenderTargetBitmap(1080, 700, 96, 96, PixelFormats.Pbgra32); bitmap.Render(sheet);
         var png = new PngBitmapEncoder(); png.Frames.Add(BitmapFrame.Create(bitmap));
-        using var file = File.Create(Path.Combine(_directory, "PelicanActions.png")); png.Save(file);
+        using var file = File.Create(Path.Combine(_directory, collision ? "PelicanCollision.png" : interaction ? "PelicanInteraction.png" : "PelicanActions.png")); png.Save(file);
+        if (!interaction && !collision) { RenderPelicanActions(true); RenderPelicanActions(false, true); }
     }
 }

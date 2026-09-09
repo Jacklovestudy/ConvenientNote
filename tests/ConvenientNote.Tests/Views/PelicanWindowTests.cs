@@ -13,6 +13,65 @@ namespace ConvenientNote.Tests.Views;
 public sealed class PelicanWindowTests
 {
     [Fact]
+    public void CollisionFramesStayInsideWindowInBothDirections() => Sta(() =>
+    {
+        var artwork = new PelicanVisual();
+        artwork.Measure(new Size(360, 310)); artwork.Arrange(new Rect(0, 0, 360, 310));
+        foreach (var direction in new[] { 1, -1 })
+        for (var frame = 0; frame < 30; frame++)
+        {
+            artwork.Update(PetAction.Crash, .7, frame / 10d, direction); artwork.UpdateLayout();
+            new RenderTargetBitmap(360, 310, 96, 96, PixelFormats.Pbgra32).Render(artwork);
+            var bounds = VisualTreeHelper.GetDescendantBounds(artwork);
+            Assert.True(bounds.Left >= 0 && bounds.Top >= 0 && bounds.Right <= 360 && bounds.Bottom <= 310,
+                $"Collision frame {frame}, direction {direction}: {bounds}");
+        }
+    });
+
+    [Fact]
+    public void HoverTracksScaledAndMirroredHeadAndDoesNotOverrideBoost() => Sta(() =>
+    {
+        var window = new PelicanWindow(new PetPreferences(), () => { }, () => { }, () => { }) { Opacity = 0 };
+        try
+        {
+            window.Show();
+            foreach (var size in new[] { .6, 1.6 })
+            foreach (var direction in new[] { 1, -1 })
+            {
+                window.ResizePet(size); window.UpdateLayout();
+                window.Artwork.Update(PetAction.Ride, 0, 0, direction);
+                window.Artwork.UpdateLayout();
+                var bitmap = new RenderTargetBitmap(500, 500, 96, 96, PixelFormats.Pbgra32);
+                bitmap.Render(window.Artwork);
+                var scale = window.Artwork.ActualWidth / 360;
+                Point At(double x, double y) => new((direction < 0 ? 360 - x : x) * scale, y * scale);
+                Assert.True(window.Artwork.ContactAt(At(207, 43)).OnHead);
+                Assert.False(window.Artwork.ContactAt(At(78, 245)).OnPet);
+                Assert.True(window.UpdatePointerInteraction(.1, At(207, 43)));
+                window.UpdatePointerInteraction(.1, At(225, 43));
+                window.UpdatePointerInteraction(.1, At(207, 43));
+                Assert.True(window.Artwork.IsPetting);
+                Assert.False(window.UpdatePointerInteraction(.1, null));
+                window.Motion.Boost();
+                Assert.False(window.UpdatePointerInteraction(.1, At(207, 43)));
+                Assert.Equal(PetAction.Boost, window.Motion.Action);
+                window.Motion.Ride();
+            }
+            window.Artwork.Update(PetAction.Sleep, 0, 0, 1); window.Artwork.UpdateLayout();
+            new RenderTargetBitmap(500, 500, 96, 96, PixelFormats.Pbgra32).Render(window.Artwork);
+            window.Motion.Sleep();
+            var head = new RotateTransform(48, 200, 99).Transform(new Point(207, 43));
+            head = new Point(head.X * window.Artwork.ActualWidth / 360, head.Y * window.Artwork.ActualHeight / 310);
+            Assert.True(window.Artwork.ContactAt(head).OnHead);
+            window.UpdatePointerInteraction(.4, head);
+            Assert.Equal(PetAction.Sleep, window.Motion.Action);
+            window.UpdatePointerInteraction(.4, head);
+            Assert.Equal(PetAction.React, window.Motion.Action);
+        }
+        finally { window.Close(); }
+    });
+
+    [Fact]
     public void ArticulatedFramesHaveTransparentBackgroundAndChangeWithPedaling() => Sta(() =>
     {
         var artwork = new PelicanVisual();

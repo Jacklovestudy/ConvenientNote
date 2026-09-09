@@ -14,6 +14,7 @@ public sealed class PetController(PetPreferencesService preferences) : IDesktopP
     public string ToggleLabel => IsVisible ? "隐藏桌宠" : "显示桌宠";
     public string Status { get => _status; private set { _status = value; Changed(); } }
     public double Scale => preferences.Current.Scale;
+    public double RidingSpeed => preferences.Current.RidingSpeed;
     public bool Roaming => preferences.Current.Roaming;
     public event Action? OpenSettings;
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -73,6 +74,17 @@ public sealed class PetController(PetPreferencesService preferences) : IDesktopP
         }
         catch (Exception error) { Status = "设置未保存：" + error.Message; }
         Changed(nameof(Roaming));
+    }
+
+    public void SetRidingSpeed(double value)
+    {
+        try
+        {
+            preferences.Update(preferences.Current with { RidingSpeed = Math.Round(value) });
+            if (_window is not null) _window.Motion.RidingSpeed = RidingSpeed;
+        }
+        catch (Exception error) { Status = "骑行速度未保存：" + error.Message; }
+        Changed(nameof(RidingSpeed));
     }
 
     private void SavePosition(object? sender, EventArgs e) => Save(preferences.Current.Enabled);

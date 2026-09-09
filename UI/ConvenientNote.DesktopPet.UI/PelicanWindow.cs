@@ -20,6 +20,8 @@ public sealed class PelicanWindow : Window
     private double _last, _phase;
     private Point? _press, _offset;
     private bool _dragging, _closing;
+    private readonly PetAttention _attention = new();
+    private Point? _lastPointer;
     private HwndSource? _source;
     public PetMotion Motion { get; } = new();
     public bool Roaming { get; set; }
@@ -37,6 +39,7 @@ public sealed class PelicanWindow : Window
         ShowActivated = false;
         Topmost = true;
         Roaming = preferences.Roaming;
+        Motion.RidingSpeed = preferences.RidingSpeed;
         if (!Roaming) Motion.Sleep();
         Width = 260 * preferences.Scale;
         Height = Width * 310 / 360;
@@ -44,7 +47,7 @@ public sealed class PelicanWindow : Window
         Top = preferences.Top ?? SystemParameters.WorkArea.Bottom - Height - 8;
         Content = _visual;
         AutomationProperties.SetName(_visual, "骑行鹈鹕：单击歪头，双击加速，按住拖动，右键设置");
-        _visual.ToolTip = "单击歪头 · 双击加速 · 按住拖动 · 右键设置";
+        _visual.ToolTip = "停留互动 · 来回摸头 · 单击歪头 · 双击加速 · 按住拖动 · 右键设置";
         var menu = new ContextMenu();
         AddMenu(menu, "骑一会儿", () => Motion.Ride());
         AddMenu(menu, "打个盹", () => Motion.Sleep());
@@ -135,21 +138,44 @@ public sealed class PelicanWindow : Window
         if (IsLoaded) DesktopGeometry.Clamp(this);
     }
 
+    public bool UpdatePointerInteraction(double seconds, Point? pointer)
+    {
+        var blocked = _dragging || _press.HasValue || Motion.Action is PetAction.Boost or PetAction.Crash || _visual.ContextMenu?.IsOpen == true;
+        var contact = pointer is { } p && !blocked ? _visual.ContactAt(p) : (OnPet: false, OnHead: false);
+        var travel = pointer is { } current && _lastPointer is { } previous
+            ? (current - previous).Length * 360 / Math.Max(1, _visual.ActualWidth) : 0;
+        _lastPointer = pointer;
+        var wasHovering = _attention.IsHovering;
+        if (_attention.Advance(seconds, contact.OnPet, contact.OnHead, travel, Motion.Action == PetAction.Sleep))
+            Motion.React();
+        if (wasHovering && !_attention.IsHovering && !blocked && Roaming && Motion.Action != PetAction.Sleep)
+            Motion.Ride();
+        _visual.IsAttentive = _attention.IsHovering;
+        _visual.IsPetting = _attention.IsPetting;
+        _visual.AttentionTilt += ((_attention.IsHovering ? 1 : 0) - _visual.AttentionTilt) * Math.Min(1, seconds * 6);
+        _visual.Pointer = blocked ? null : pointer;
+        return _attention.IsHovering;
+    }
+
     private void Tick(object? sender, EventArgs e)
     {
         var now = _clock.Elapsed.TotalSeconds;
         var delta = Math.Clamp(now - _last, 0, .1); _last = now;
+        var hovering = UpdatePointerInteraction(delta, Mouse.GetPosition(_visual));
         if (_visual.ContextMenu?.IsOpen == true || _press.HasValue && !_dragging) return;
-        Motion.Advance(delta);
+        if (!hovering) Motion.Advance(delta);
+        var restTarget = Motion.Action == PetAction.Sleep ? 1d : 0d;
+        var rest = _visual.RestAmount ?? (_visual.Action == PetAction.Sleep ? 1d : 0d);
+        _visual.RestAmount = Math.Abs(restTarget - rest) < .001 ? restTarget : rest + (restTarget - rest) * Math.Min(1, delta * 5);
         var speed = Motion.Speed;
-        _phase += delta * (speed > 0 ? speed / 10 : .8);
-        if (Roaming && !_dragging && speed > 0)
+        _phase += delta * (speed > 0 && !hovering ? speed / 10 : .8);
+        if (Roaming && !_dragging && !hovering && speed > 0)
         {
             var area = DesktopGeometry.WorkArea(this);
             var next = Left + Motion.Direction * speed * delta;
             var max = Math.Max(area.Left, area.Right - Width);
             Left = Math.Clamp(next, area.Left, max);
-            if (next <= area.Left || next >= max) Motion.TurnAtEdge();
+            if ((Motion.Direction < 0 && next <= area.Left) || (Motion.Direction > 0 && next >= max)) Motion.TurnAtEdge();
         }
         _visual.Update(Motion.Action, _phase, Motion.Age, Motion.Direction);
     }
