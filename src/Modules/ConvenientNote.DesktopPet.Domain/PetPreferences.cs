@@ -1,6 +1,6 @@
 namespace ConvenientNote.DesktopPet.Domain;
 
-public sealed record PetPreferences(bool Enabled = false, double Scale = 1, double? Left = null, double? Top = null, bool Roaming = true, double RidingSpeed = 22)
+public sealed record PetPreferences(bool Enabled = false, double Scale = 1, double? Left = null, double? Top = null, bool Roaming = true, double RidingSpeed = 22, PetVehicle Vehicle = PetVehicle.Bicycle)
 {
     public static void ValidateSpeed(double speed)
     {
@@ -8,6 +8,7 @@ public sealed record PetPreferences(bool Enabled = false, double Scale = 1, doub
     }
     public void Validate()
     {
+        if (!Enum.IsDefined(Vehicle)) throw new ArgumentOutOfRangeException(nameof(Vehicle));
         ValidateSpeed(RidingSpeed);
         if (!double.IsFinite(Scale) || Scale < .6 || Scale > 1.6) throw new ArgumentOutOfRangeException(nameof(Scale));
         if (Left.HasValue != Top.HasValue || Left is { } x && !double.IsFinite(x) || Top is { } y && !double.IsFinite(y))

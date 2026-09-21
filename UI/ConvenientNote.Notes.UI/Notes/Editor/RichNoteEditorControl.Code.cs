@@ -194,9 +194,9 @@ public partial class RichNoteEditorControl
         return positions;
     }
 
-    private bool FindTextOrCode(string query)
+    private bool FindTextOrCode(string query, int direction = 1)
     {
-        if (string.IsNullOrWhiteSpace(query)) { OutlineStatusText.Text = "输入要查找的正文内容"; return false; }
+        if (string.IsNullOrWhiteSpace(query)) { SetSearchStatus(0, 0); _lastFindQuery = ""; _lastFindIndex = -1; return false; }
         var targets = LogicalSearchTargets(Editor.Document.Blocks).ToList();
         var matches = new List<(int Target, int Occurrence)>();
         for (var i = 0; i < targets.Count; i++)
@@ -204,8 +204,11 @@ public partial class RichNoteEditorControl
             var count = targets[i] is CodeBlock code ? CodeMatches(code.CodeText, query).Count : FindParagraphMatches((Paragraph)targets[i], query).Count;
             for (var j = 0; j < count; j++) matches.Add((i, j));
         }
-        if (matches.Count == 0) { OutlineStatusText.Text = "未找到匹配内容"; return false; }
-        _lastFindIndex = query == _lastFindQuery ? (_lastFindIndex + 1) % matches.Count : 0;
+        if (matches.Count == 0) { SetSearchStatus(0, 0, true); _lastFindQuery = query; _lastFindIndex = -1; return false; }
+        var retainSearchFocus = DocumentSearchBox.IsKeyboardFocusWithin;
+        _lastFindIndex = query == _lastFindQuery && _lastFindIndex >= 0
+            ? (_lastFindIndex + direction + matches.Count) % matches.Count
+            : direction < 0 ? matches.Count - 1 : 0;
         _lastFindQuery = query;
         var location = matches[_lastFindIndex];
         while (true)
@@ -224,9 +227,13 @@ public partial class RichNoteEditorControl
         else if (foundTarget is Paragraph paragraph)
         {
             var match = FindParagraphMatches(paragraph, query)[location.Occurrence];
-            Editor.Focus(); Editor.Selection.Select(match.Start, match.End);
+            if (!retainSearchFocus) Editor.Focus();
+            Editor.Selection.Select(match.Start, match.End);
+            var rectangle = match.Start.GetCharacterRect(LogicalDirection.Forward);
+            if (!rectangle.IsEmpty) Editor.ScrollToVerticalOffset(Editor.VerticalOffset + rectangle.Top - Editor.ActualHeight / 2);
         }
-        OutlineStatusText.Text = $"第 {_lastFindIndex + 1} / {matches.Count} 处匹配";
+        if (retainSearchFocus) DocumentSearchBox.Focus();
+        SetSearchStatus(_lastFindIndex + 1, matches.Count);
         return true;
     }
 

@@ -13,7 +13,7 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
         <StackPanel Margin="32" MaxWidth="980">
             <TextBlock Text="鹈鹕桌宠" FontSize="28" FontWeight="SemiBold" />
-            <TextBlock Text="一条红围巾，一辆绿单车。让它陪你慢慢过一天。" Foreground="#576474" FontSize="14" Margin="0,8,0,24" TextWrapping="Wrap" />
+            <TextBlock Text="一条红围巾，骑车也能飞。拖到上半屏乘火箭，下半屏骑单车。" Foreground="#576474" FontSize="14" Margin="0,8,0,24" TextWrapping="Wrap" />
             <Border Background="White" BorderBrush="#DEE5E0" BorderThickness="1" CornerRadius="16" Padding="28">
                 <Grid>
                     <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="320" /></Grid.ColumnDefinitions>
@@ -27,7 +27,7 @@
                         <TextBlock Text="今天也不着急" FontSize="23" FontWeight="SemiBold" />
                         <TextBlock Text="鼠标停在身上会歪头，来回摸头会眯眼。&#10;打盹时在头上停留，可以轻轻唤醒它。&#10;单击歪头、双击加速，按住拖动，右键休息。" TextWrapping="Wrap" FontSize="14" LineHeight="24" Foreground="#576474" Margin="0,12,0,22" />
                         <Button Content="{Binding ToggleLabel}" Click="TogglePet" Style="{StaticResource MaterialDesignRaisedButton}" HorizontalAlignment="Left" Padding="22,8" Height="40" />
-                        <CheckBox Content="允许在当前屏幕自动骑行" IsChecked="{Binding Roaming, Mode=OneWay}" Click="ToggleRoaming" Margin="0,24,0,20" />
+                        <CheckBox Content="允许在当前屏幕自动骑行 / 飞行" IsChecked="{Binding Roaming, Mode=OneWay}" Click="ToggleRoaming" Margin="0,24,0,20" />
                         <DockPanel>
                             <TextBlock Text="桌宠大小" />
                             <TextBlock Text="{Binding Value, ElementName=SizeSlider, StringFormat={}{0:P0}}" HorizontalAlignment="Right" Foreground="#576474" />
@@ -35,7 +35,7 @@
                         <Slider x:Name="SizeSlider" Minimum="0.6" Maximum="1.6" TickFrequency="0.1" IsSnapToTickEnabled="True"
                                 Value="{Binding Scale, Mode=OneWay}" ValueChanged="PetSizeChanged" Margin="0,8,0,0" AutomationProperties.Name="桌宠大小" />
                         <DockPanel Margin="0,20,0,0">
-                            <TextBlock Text="骑行速度" />
+                            <TextBlock Text="骑行 / 飞行速度" />
                             <TextBlock Text="{Binding Value, ElementName=SpeedSlider, StringFormat={}{0:0} 像素/秒}" HorizontalAlignment="Right" Foreground="#576474" />
                         </DockPanel>
                         <Slider x:Name="SpeedSlider" Minimum="10" Maximum="120" TickFrequency="1" IsSnapToTickEnabled="True"
@@ -47,6 +47,7 @@
             <TextBlock Text="{Binding Status}" TextWrapping="Wrap" Foreground="#576474" Margin="0,14,0,26" AutomationProperties.LiveSetting="Polite" />
             <TextBlock Text="试试它的动作" FontSize="19" FontWeight="SemiBold" />
             <TextBlock Text="下面只演示动作，不会移动桌面上的鹈鹕。" Foreground="#576474" Margin="0,6,0,16" />
+            <TextBlock Text="拖动时提示即将乘坐的交通工具，松开后换乘；屏幕中线附近会保持原状态。" TextWrapping="Wrap" Foreground="#576474" Margin="0,0,0,16" />
             <WrapPanel>
                 <Button Content="慢骑" Tag="Ride" Click="Play" Style="{StaticResource ActionButton}" />
                 <Button Content="加速" Tag="Boost" Click="Play" Style="{StaticResource ActionButton}" />
@@ -56,7 +57,7 @@
                 <Button Content="打盹" Tag="Sleep" Click="Play" Style="{StaticResource ActionButton}" />
                 <Button Content="撞墙" Tag="Crash" Click="Play" Style="{StaticResource ActionButton}" />
             </WrapPanel>
-            <TextBlock Text="90 秒没有互动会打盹。显示状态、大小、速度和位置会被记住；退出软件时，鹈鹕也会一起回家。"
+            <TextBlock Text="90 秒没有互动会打盹，每次最多休息 30 秒后自动醒来。显示状态、交通工具、大小、速度和位置会被记住；退出软件时，鹈鹕也会一起回家。"
                        TextWrapping="Wrap" Foreground="#576474" FontSize="12" Margin="0,14,0,0" />
         </StackPanel>
     </ScrollViewer>

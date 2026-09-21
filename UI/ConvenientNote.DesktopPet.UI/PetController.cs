@@ -16,6 +16,7 @@ public sealed class PetController(PetPreferencesService preferences) : IDesktopP
     public double Scale => preferences.Current.Scale;
     public double RidingSpeed => preferences.Current.RidingSpeed;
     public bool Roaming => preferences.Current.Roaming;
+    public PetVehicle Vehicle => preferences.Current.Vehicle;
     public event Action? OpenSettings;
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -92,7 +93,8 @@ public sealed class PetController(PetPreferencesService preferences) : IDesktopP
     {
         try
         {
-            preferences.Update(preferences.Current with { Enabled = enabled, Left = _window?.Left ?? preferences.Current.Left, Top = _window?.Top ?? preferences.Current.Top });
+            preferences.Update(preferences.Current with { Enabled = enabled, Left = _window?.Left ?? preferences.Current.Left, Top = _window?.Top ?? preferences.Current.Top, Vehicle = _window?.Motion.Vehicle ?? preferences.Current.Vehicle });
+            Changed(nameof(Vehicle));
             Status = enabled ? "桌宠位置已记住。" : "鹈鹕休息了，随时可以再次显示。";
         }
         catch (Exception error) { Status = "桌宠设置未保存：" + error.Message; }

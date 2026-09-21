@@ -11,6 +11,9 @@ public sealed class NoteCardViewModel : BindableBase
     private string _richContent;
     private double _x;
     private double _y;
+    private double _displayX;
+    private double _displayY;
+    private double _displayWidth;
     private bool _isPinned;
     private bool _isFavorite;
     private IReadOnlyList<string> _tags;
@@ -26,6 +29,9 @@ public sealed class NoteCardViewModel : BindableBase
         _y = snapshot.Y;
         Width = Math.Max(280, snapshot.Width);
         Height = Math.Max(180, snapshot.Height);
+        _displayX = _x;
+        _displayY = _y;
+        _displayWidth = Width;
         Color = snapshot.Color;
         ZIndex = snapshot.ZIndex;
         _isPinned = snapshot.IsPinned;
@@ -39,6 +45,16 @@ public sealed class NoteCardViewModel : BindableBase
     public NoteId Id { get; }
     public double Width { get; }
     public double Height { get; }
+    public double DisplayX { get => _displayX; private set => SetProperty(ref _displayX, value); }
+    public double DisplayY { get => _displayY; private set => SetProperty(ref _displayY, value); }
+    public double DisplayWidth { get => _displayWidth; private set => SetProperty(ref _displayWidth, value); }
+
+    public void ArrangeForDisplay(double x, double y, double width)
+    {
+        DisplayX = x;
+        DisplayY = y;
+        DisplayWidth = width;
+    }
     public string Color { get; }
     public int ZIndex { get; }
     public DateTimeOffset CreatedAt { get; }
@@ -128,6 +144,8 @@ public sealed class NoteCardViewModel : BindableBase
     {
         X = Math.Max(0, x);
         Y = Math.Max(0, y);
+        DisplayX = X;
+        DisplayY = Y;
     }
 }
 

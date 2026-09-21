@@ -30,7 +30,7 @@ public sealed class PelicanWindow : Window
 
     public PelicanWindow(PetPreferences preferences, Action hide, Action openSettings, Action toggleRoaming)
     {
-        Title = "骑行鹈鹕";
+        Title = "鹈鹕桌宠";
         WindowStyle = WindowStyle.None;
         AllowsTransparency = true;
         Background = Brushes.Transparent;
@@ -40,6 +40,9 @@ public sealed class PelicanWindow : Window
         Topmost = true;
         Roaming = preferences.Roaming;
         Motion.RidingSpeed = preferences.RidingSpeed;
+        Motion.ChangeVehicle(preferences.Vehicle);
+        _visual.Vehicle = preferences.Vehicle;
+        _visual.RocketBlend = preferences.Vehicle == PetVehicle.Rocket ? 1 : 0;
         if (!Roaming) Motion.Sleep();
         Width = 260 * preferences.Scale;
         Height = Width * 310 / 360;
@@ -48,9 +51,9 @@ public sealed class PelicanWindow : Window
         Content = _visual;
         AutomationProperties.SetName(_visual, "骑行鹈鹕：单击歪头，双击加速，按住拖动，右键设置");
         var menu = new ContextMenu();
-        AddMenu(menu, "骑一会儿", () => Motion.Ride());
+        AddMenu(menu, "出发", () => Motion.Ride());
         AddMenu(menu, "打个盹", () => Motion.Sleep());
-        AddMenu(menu, "切换自动骑行", toggleRoaming);
+        AddMenu(menu, "切换自动移动", toggleRoaming);
         menu.Items.Add(new Separator());
         AddMenu(menu, "桌宠设置", openSettings);
         AddMenu(menu, "隐藏鹈鹕", hide);
@@ -107,6 +110,7 @@ public sealed class PelicanWindow : Window
         if (!_dragging) return;
         Left = cursor.X - offset.X;
         Top = cursor.Y - offset.Y;
+        _visual.PendingVehicle = VehicleAtPosition();
     }
 
     private void Release(object sender, MouseButtonEventArgs e)
@@ -124,8 +128,23 @@ public sealed class PelicanWindow : Window
         _press = null; _offset = null;
         if (!_dragging) return;
         _dragging = false;
-        Motion.Release();
+        CompleteDrop();
+    }
+
+    private PetVehicle VehicleAtPosition()
+    {
+        var area = DesktopGeometry.WorkArea(this);
+        return PetVehicleSelection.At(Top + Height / 2, area.Top, area.Height, Motion.Vehicle);
+    }
+
+    public void CompleteDrop()
+    {
         DesktopGeometry.Clamp(this);
+        Motion.ChangeVehicle(VehicleAtPosition());
+        Motion.Release();
+        if (!Roaming) Motion.Sleep();
+        _visual.PendingVehicle = null;
+        _visual.Vehicle = Motion.Vehicle;
         PositionSettled?.Invoke(this, EventArgs.Empty);
     }
 
@@ -166,11 +185,15 @@ public sealed class PelicanWindow : Window
         var delta = Math.Clamp(now - _last, 0, .1); _last = now;
         var hovering = UpdatePointerInteraction(delta, Mouse.GetPosition(_visual));
         if (_visual.ContextMenu?.IsOpen == true || _press.HasValue && !_dragging) return;
-        if (!hovering) Motion.Advance(delta);
+        if (!hovering || Motion.Action == PetAction.Sleep) Motion.Advance(delta);
         var restTarget = Motion.Action == PetAction.Sleep ? 1d : 0d;
         var rest = _visual.RestAmount ?? (_visual.Action == PetAction.Sleep ? 1d : 0d);
         _visual.RestAmount = Math.Abs(restTarget - rest) < .001 ? restTarget : rest + (restTarget - rest) * Math.Min(1, delta * 5);
         var speed = Motion.Speed;
+        _visual.Vehicle = Motion.Vehicle;
+        var vehicleTarget = Motion.Vehicle == PetVehicle.Rocket ? 1d : 0d;
+        var blend = _visual.RocketBlend ?? vehicleTarget;
+        _visual.RocketBlend = Math.Abs(vehicleTarget - blend) < .005 ? vehicleTarget : blend + (vehicleTarget - blend) * Math.Min(1, delta * 7);
         _phase += delta * (speed > 0 && !hovering ? speed / 10 : .8);
         if (Roaming && !_dragging && !hovering && speed > 0)
         {

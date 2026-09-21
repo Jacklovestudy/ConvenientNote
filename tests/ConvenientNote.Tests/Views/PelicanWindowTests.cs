@@ -13,6 +13,44 @@ namespace ConvenientNote.Tests.Views;
 public sealed class PelicanWindowTests
 {
     [Fact]
+    public void DroppingSwitchesVehicleAndMiddleBandKeepsIt() => Sta(() =>
+    {
+        var window = new PelicanWindow(new PetPreferences(Roaming: false), () => { }, () => { }, () => { }) { Opacity = 0 };
+        try
+        {
+            window.Show(); window.UpdateLayout();
+            var area = SystemParameters.WorkArea;
+            window.Left = area.Left + 20;
+            window.Top = area.Top + 5;
+            window.CompleteDrop();
+            Assert.Equal(PetVehicle.Rocket, window.Motion.Vehicle);
+            Assert.Equal(PetAction.Sleep, window.Motion.Action);
+            window.Top = area.Top + area.Height / 2 - window.Height / 2;
+            window.CompleteDrop();
+            Assert.Equal(PetVehicle.Rocket, window.Motion.Vehicle);
+            window.Top = area.Bottom - window.Height - 5;
+            window.CompleteDrop();
+            Assert.Equal(PetVehicle.Bicycle, window.Motion.Vehicle);
+        }
+        finally { window.Close(); }
+    });
+
+    [Fact]
+    public void RocketFramesFitAndKeepTransparentBackground() => Sta(() =>
+    {
+        var artwork = new PelicanVisual { Vehicle = PetVehicle.Rocket };
+        artwork.Measure(new Size(360, 310)); artwork.Arrange(new Rect(0, 0, 360, 310));
+        foreach (var direction in new[] { 1, -1 })
+        foreach (var action in new[] { PetAction.Ride, PetAction.Boost, PetAction.Brake, PetAction.Sleep })
+        {
+            artwork.Update(action, 1, .2, direction); artwork.UpdateLayout();
+            new RenderTargetBitmap(360, 310, 96, 96, PixelFormats.Pbgra32).Render(artwork);
+            var bounds = VisualTreeHelper.GetDescendantBounds(artwork);
+            Assert.True(bounds.Left >= 0 && bounds.Top >= 0 && bounds.Right <= 360 && bounds.Bottom <= 310, $"{action}: {bounds}");
+        }
+    });
+
+    [Fact]
     public void FrontPoseHasTwoEyesAndNoLongSidewaysBill() => Sta(() =>
     {
         var artwork = new PelicanVisual { FrontFacing = 1 };

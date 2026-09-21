@@ -9,13 +9,13 @@
                 BorderThickness="1"
                 CornerRadius="10"
                 ClipToBounds="True">
-            <ScrollViewer HorizontalScrollBarVisibility="Auto"
+            <ScrollViewer x:Name="WallScrollViewer"
+                          HorizontalScrollBarVisibility="Disabled"
                           VerticalScrollBarVisibility="Auto"
+                          ScrollChanged="WallScrollViewer_ScrollChanged"
                           CanContentScroll="False">
-                <Grid Width="1800" Height="1100" Background="#F8FAFC">
-                    <ItemsControl ItemsSource="{Binding FilteredNotes}"
-                                  Width="1800"
-                                  Height="1100">
+                <Grid x:Name="WallSurface" Background="#F8FAFC">
+                    <ItemsControl x:Name="WallItems" ItemsSource="{Binding FilteredNotes}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
                                 <Canvas Background="#F8FAFC" />
@@ -23,14 +23,14 @@
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemContainerStyle>
                             <Style TargetType="ContentPresenter">
-                                <Setter Property="Canvas.Left" Value="{Binding X}" />
-                                <Setter Property="Canvas.Top" Value="{Binding Y}" />
+                                <Setter Property="Canvas.Left" Value="{Binding DisplayX}" />
+                                <Setter Property="Canvas.Top" Value="{Binding DisplayY}" />
                                 <Setter Property="Panel.ZIndex" Value="{Binding ZIndex}" />
                             </Style>
                         </ItemsControl.ItemContainerStyle>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Border Width="{Binding Width}"
+                                <Border Width="{Binding DisplayWidth}"
                                         Height="{Binding Height}"
                                         Padding="16"
                                         Background="{Binding Color}"
@@ -142,7 +142,7 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
-                    <StackPanel Width="380"
+                    <StackPanel MaxWidth="380" Margin="16"
                                 HorizontalAlignment="Center"
                                 VerticalAlignment="Center"
                                 Visibility="{Binding EmptyVisibility}">

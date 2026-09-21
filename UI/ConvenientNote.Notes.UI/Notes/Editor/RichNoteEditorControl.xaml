@@ -144,6 +144,18 @@
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="260" />
             </Grid.ColumnDefinitions>
+            <DockPanel>
+                <Border x:Name="SearchBar" DockPanel.Dock="Top" Visibility="Collapsed" Background="White" BorderBrush="#DFE4EA" BorderThickness="0,0,0,1" Padding="12,8">
+                    <DockPanel>
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                            <TextBlock x:Name="SearchStatusText" Text="0 / 0" Foreground="#475467" VerticalAlignment="Center" Margin="10,0" AutomationProperties.LiveSetting="Polite" />
+                            <Button x:Name="FindPreviousButton" Style="{StaticResource EditorToolButton}" Content="↑" IsEnabled="False" Click="FindPreviousButton_Click" ToolTip="上一处 (Shift+Enter / Shift+F3)" AutomationProperties.Name="上一处匹配" />
+                            <Button x:Name="FindNextButton" Style="{StaticResource EditorToolButton}" Content="↓" IsEnabled="False" Click="FindNextButton_Click" ToolTip="下一处 (Enter / F3)" AutomationProperties.Name="下一处匹配" />
+                            <Button Style="{StaticResource EditorToolButton}" Content="×" Click="CloseSearchButton_Click" ToolTip="关闭搜索 (Esc)" AutomationProperties.Name="关闭搜索" />
+                        </StackPanel>
+                        <TextBox x:Name="DocumentSearchBox" VerticalContentAlignment="Center" Padding="6" materialDesign:HintAssist.Hint="搜索笔记关键字…" ToolTip="搜索整篇正文，包含代码和折叠内容" AutomationProperties.Name="搜索笔记正文" TextChanged="DocumentSearchBox_TextChanged" KeyDown="DocumentSearchBox_KeyDown" />
+                    </DockPanel>
+                </Border>
             <Border Background="White" CornerRadius="10" Padding="0">
                 <Grid x:Name="EditorZoomViewport" ClipToBounds="True" PreviewMouseWheel="EditorZoomViewport_PreviewMouseWheel">
                 <Grid x:Name="EditorZoomSurface">
@@ -159,6 +171,7 @@
                              VerticalContentAlignment="Top"
                              AcceptsTab="True"
                              IsDocumentEnabled="True"
+                             IsInactiveSelectionHighlightEnabled="True"
                              AllowDrop="True"
                              VerticalScrollBarVisibility="Auto"
                              TextChanged="EditorContentChanged"
@@ -170,6 +183,7 @@
                 </Grid>
                 </Grid>
             </Border>
+            </DockPanel>
             <Border Grid.Column="1" Margin="16,0,0,0" Padding="16" Background="White" CornerRadius="10">
                 <TabControl x:Name="SidebarTabs" BorderThickness="0" Background="White">
                     <TabItem Header="目录">
@@ -181,10 +195,7 @@
                                 <RowDefinition Height="*" />
                                 <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
-                            <DockPanel>
-                                <Button DockPanel.Dock="Right" Padding="8,4" Content="查找" Click="FindNextButton_Click" ToolTip="查找下一处 (Enter / F3)" />
-                                <TextBox x:Name="DocumentSearchBox" Margin="0,0,6,0" VerticalContentAlignment="Center" Padding="6" materialDesign:HintAssist.Hint="搜索正文…" ToolTip="搜索整篇正文，包含折叠内容 (Ctrl+F)" AutomationProperties.Name="搜索笔记正文" KeyDown="DocumentSearchBox_KeyDown" />
-                            </DockPanel>
+                            <Button x:Name="OpenSearchButton" Content="搜索正文  Ctrl+F" Click="OpenSearchButton_Click" Padding="8,4" />
                             <TextBlock x:Name="OutlineStatusText" Grid.Row="1" Margin="0,6,0,8" TextWrapping="Wrap" Foreground="#475467" FontSize="12" />
                             <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,8">
                                 <Button x:Name="CollapseAllButton" Content="全部折叠" Padding="7,4" Margin="0,0,6,0" Click="CollapseAllButton_Click" />

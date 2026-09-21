@@ -111,6 +111,10 @@ internal static class Program
                 if (firstWindow.Motion.Speed != 80) throw new InvalidOperationException("Boost is not twice the configured speed.");
                 pet.SetRidingSpeed(55);
                 if (firstWindow.Motion.Speed != 110) throw new InvalidOperationException("Boost did not track the changed speed.");
+                firstWindow.Left = SystemParameters.WorkArea.Left + 20;
+                firstWindow.Top = SystemParameters.WorkArea.Top + 5;
+                firstWindow.CompleteDrop();
+                if (pet.Vehicle != ConvenientNote.DesktopPet.Domain.PetVehicle.Rocket) throw new InvalidOperationException("Dropping high did not save the rocket.");
                 pet.SetScale(.8);
                 if (Math.Abs(firstWindow.Width - 208) > .01) throw new InvalidOperationException("Pet size was not applied.");
                 pet.Shutdown();
@@ -121,6 +125,10 @@ internal static class Program
                 await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
                 if (!pet.IsVisible || ReferenceEquals(firstWindow, _petWindow)) throw new InvalidOperationException("Pet did not restore after shutdown.");
                 if (_petWindow!.Motion.RidingSpeed != 55) throw new InvalidOperationException("Pet did not restore configured speed.");
+                if (_petWindow.Motion.Vehicle != ConvenientNote.DesktopPet.Domain.PetVehicle.Rocket) throw new InvalidOperationException("Pet did not restore rocket mode.");
+                _petWindow.Top = SystemParameters.WorkArea.Bottom - _petWindow.Height - 5;
+                _petWindow.CompleteDrop();
+                if (pet.Vehicle != ConvenientNote.DesktopPet.Domain.PetVehicle.Bicycle) throw new InvalidOperationException("Dropping low did not restore the bicycle.");
                 pet.Hide();
                 if (pet.IsVisible) throw new InvalidOperationException("Pet did not hide.");
                 pet.SetScale(1);
@@ -204,7 +212,7 @@ internal static class Program
             VerifyScrollBars(VisualTreeHelper.GetChild(root, index));
     }
 
-    private static void RenderPelicanActions(bool interaction = false, bool collision = false)
+    private static void RenderPelicanActions(bool interaction = false, bool collision = false, bool rocket = false)
     {
         var sheet = new DrawingVisual();
         using (var drawing = sheet.RenderOpen())
@@ -213,9 +221,12 @@ internal static class Program
             var actions = Enum.GetValues<ConvenientNote.DesktopPet.Domain.PetAction>().Take(6).ToArray();
             string[] labels = interaction ? ["视线跟随", "悬停歪头", "摸头眯眼", "向左互动", "缓缓醒来", "打盹等待"] : ["慢骑", "加速", "刹车", "歪头", "拎起", "打盹"];
             if (collision) labels = ["碰撞", "滑下车", "坐着发懵", "爬回车座", "重新上车", "往回骑"];
+            if (rocket) labels = ["巡航", "加速", "刹车", "正面互动", "拖动", "打盹"];
             for (var i = 0; i < actions.Length; i++)
             {
                 var artwork = new ConvenientNote.DesktopPet.UI.PelicanVisual();
+                if (rocket) artwork.Vehicle = ConvenientNote.DesktopPet.Domain.PetVehicle.Rocket;
+                if (rocket && i == 3) { artwork.FrontFacing = 1; artwork.BubbleOpacity = 1; }
                 if (interaction)
                 {
                     artwork.IsAttentive = true;
@@ -243,7 +254,7 @@ internal static class Program
         }
         var bitmap = new RenderTargetBitmap(1080, 700, 96, 96, PixelFormats.Pbgra32); bitmap.Render(sheet);
         var png = new PngBitmapEncoder(); png.Frames.Add(BitmapFrame.Create(bitmap));
-        using var file = File.Create(Path.Combine(_directory, collision ? "PelicanCollision.png" : interaction ? "PelicanInteraction.png" : "PelicanActions.png")); png.Save(file);
-        if (!interaction && !collision) { RenderPelicanActions(true); RenderPelicanActions(false, true); }
+        using var file = File.Create(Path.Combine(_directory, rocket ? "PelicanRocket.png" : collision ? "PelicanCollision.png" : interaction ? "PelicanInteraction.png" : "PelicanActions.png")); png.Save(file);
+        if (!interaction && !collision && !rocket) { RenderPelicanActions(true); RenderPelicanActions(false, true); RenderPelicanActions(false, false, true); }
     }
 }

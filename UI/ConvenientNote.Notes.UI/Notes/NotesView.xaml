@@ -29,6 +29,12 @@
                                        VerticalAlignment="Bottom"
                                        Foreground="#667085"
                                        FontSize="11" />
+                            <Button x:Name="AutoArrangeNotesButton"
+                                    Height="28" Margin="12,0,0,0" Padding="8,0"
+                                    Background="#F8FAFC" Foreground="#3F51B5" BorderBrush="#D8DEE8"
+                                    Content="自动调整" Click="AutoArrangeNotesButton_Click"
+                                    ToolTip="按当前宽度重新排列便签，超出部分向下滚动"
+                                    AutomationProperties.Name="自动调整便签布局" />
                         </StackPanel>
                         <TextBlock Text="把零散想法留在便签墙，需要时展开认真书写" Margin="0,4,0,0" Foreground="#667085" FontSize="11" />
                     </StackPanel>
@@ -120,7 +126,7 @@
                     <ColumnDefinition Width="5" />
                     <ColumnDefinition Width="360" MinWidth="300" MaxWidth="520" />
                 </Grid.ColumnDefinitions>
-                <views:NoteWallControl />
+                <views:NoteWallControl x:Name="NoteWall" />
                 <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch" Background="Transparent"
                               ResizeDirection="Columns" ResizeBehavior="PreviousAndNext" ToolTip="拖动调整知识点便签宽度" />
                 <views:KnowledgeMemoControl x:Name="KnowledgeMemo" Grid.Column="2" Margin="0,20,20,20" />

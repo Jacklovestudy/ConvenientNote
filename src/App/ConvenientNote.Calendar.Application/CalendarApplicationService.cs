@@ -4,7 +4,7 @@ using ConvenientNote.Platform.Contracts;
 
 namespace ConvenientNote.Calendar.Application;
 
-public sealed class CalendarApplicationService : ICalendarApi, IDisposable
+public sealed partial class CalendarApplicationService : ICalendarApi, IDisposable
 {
     private readonly ICalendarRepository _repository;
     private readonly IWorkspaceContext _workspace;
@@ -33,7 +33,8 @@ public sealed class CalendarApplicationService : ICalendarApi, IDisposable
     {
         var workspace = await _workspace.GetCurrentAsync(cancellationToken).ConfigureAwait(false);
         var events = await _repository.ListAsync(workspace.Id, cancellationToken).ConfigureAwait(false);
-        var entries = events.Select(e => new CalendarEntry(e.Id, e.Title, e.Start, e.IsCompleted, false, e.End, e.IsAllDay)).ToList();
+        var entries = events.Select(e => new CalendarEntry(e.Id, e.Title, e.IsUnscheduled ? null : e.Start, e.IsCompleted, false, e.End, e.IsAllDay,
+            e.Details, e.BatchId, e.BatchName, e.IsChecklist)).ToList();
         if (_todos is not null)
         {
             var todos = await _todos.ListAsync(cancellationToken).ConfigureAwait(false);
@@ -60,8 +61,7 @@ public sealed class CalendarApplicationService : ICalendarApi, IDisposable
     public Task RescheduleAsync(CalendarEntry entry, DateTime? date, CancellationToken cancellationToken = default)
     {
         if (entry.IsTodo) return (_todos ?? throw new InvalidOperationException("待办模块未启用。")).RescheduleAsync(entry.Id, date, cancellationToken);
-        if (date is null) throw new ArgumentException("日程需要日期；只有待办可以移回待安排。");
-        return UpdateEventAsync(entry.Id, item => item.Reschedule(date.Value), cancellationToken);
+        return UpdateEventAsync(entry.Id, item => item.Reschedule(date), cancellationToken);
     }
 
     public Task DeleteEventAsync(Guid id, CancellationToken cancellationToken = default)

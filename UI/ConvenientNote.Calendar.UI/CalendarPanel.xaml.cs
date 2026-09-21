@@ -14,10 +14,52 @@ public partial class CalendarPanel : UserControl
     private CalendarTaskViewModel? _dragTask;
     private readonly HashSet<CheckBox> _restoringCompletion = [];
     public CalendarPanel() => InitializeComponent();
+    private void ImportClicked(object sender, RoutedEventArgs e) => OpenImport(false);
+    private void HistoryClicked(object sender, RoutedEventArgs e) => OpenImport(true);
+    private void BatchClicked(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: CalendarTaskViewModel task }) OpenImport(true, task.Note.BatchId);
+    }
+    private async void OpenImport(bool history, Guid? batchId = null)
+    {
+        if (DataContext is not ScheduleViewModel vm) return;
+        var window = new ItineraryImportWindow(vm.CalendarService, history, batchId) { Owner = Window.GetWindow(this) };
+        window.ShowDialog();
+        await vm.RefreshAsync();
+        if (window.NavigateDate is { } date) vm.NavigateToDate(date);
+    }
+    private async void EditEventClicked(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not ScheduleViewModel vm || sender is not FrameworkElement { DataContext: CalendarTaskViewModel task }) return;
+        var window = new EventEditorWindow(vm.CalendarService, task.Note) { Owner = Window.GetWindow(this) };
+        window.ShowDialog();
+        await vm.RefreshAsync();
+    }
     private static void OnCompactChanged(DependencyObject d, DependencyPropertyChangedEventArgs e) => ((CalendarPanel)d).UpdateLayoutMode();
     private ScheduleViewModel? _calendarModel;
     private bool _adjustingScroll;
-    private double CalendarRowHeight => IsCompact ? 38 : 100;
+    public double ZoomFactor { get; private set; } = 1;
+    private double CalendarRowHeight => (IsCompact ? 38 : 100) * ZoomFactor;
+    private void ResetZoomClicked(object sender, RoutedEventArgs e) => SetZoom(1, 0);
+    private void SetZoom(double zoom, double anchorY)
+    {
+        zoom = Math.Clamp(zoom, 0.6, 2);
+        if (Math.Abs(zoom - ZoomFactor) < 0.000001) return;
+        anchorY = Math.Clamp(anchorY, 0, Math.Max(0, MonthScroll.ViewportHeight));
+        var offset = (MonthScroll.VerticalOffset + anchorY) * zoom / ZoomFactor - anchorY;
+        _adjustingScroll = true;
+        try
+        {
+            ZoomFactor = zoom;
+            CalendarScale.ScaleX = zoom; CalendarScale.ScaleY = zoom;
+            ResetZoomButton.Content = $"{zoom:P0}";
+            MonthScroll.UpdateLayout();
+            MonthScroll.ScrollToVerticalOffset(Math.Max(0, offset));
+            MonthScroll.UpdateLayout();
+        }
+        finally { _adjustingScroll = false; }
+        UpdateVisibleMonth();
+    }
     private async void OnLoaded(object sender, RoutedEventArgs e)
     {
         UpdateLayoutMode();
@@ -46,20 +88,30 @@ public partial class CalendarPanel : UserControl
     private void MonthScroll_MouseWheel(object sender, MouseWheelEventArgs e)
     {
         if (e.Delta == 0) return;
+        HandleCalendarWheel(e.Delta, Keyboard.Modifiers, e.GetPosition(MonthScroll).Y);
+        e.Handled = true;
+    }
+    public void HandleCalendarWheel(int delta, ModifierKeys modifiers, double anchorY)
+    {
+        if (delta == 0) return;
+        if ((modifiers & ModifierKeys.Control) != 0)
+        {
+            SetZoom(ZoomFactor * Math.Pow(1.1, delta / 120d), anchorY);
+            return;
+        }
         var lines = SystemParameters.WheelScrollLines;
         if (lines == 0) return;
         var distance = lines < 0 ? MonthScroll.ViewportHeight : lines * 16d;
-        var offset = MonthScroll.VerticalOffset - e.Delta / 120d * distance;
+        var offset = MonthScroll.VerticalOffset - delta / 120d * distance;
         if (DataContext is ScheduleViewModel vm && (offset < 0 || offset > MonthScroll.ScrollableHeight))
         {
             _adjustingScroll = true;
-            offset += vm.ExtendCalendar(offset < 0, CalendarRowHeight);
+            offset += vm.ExtendCalendar(offset < 0, CalendarRowHeight, 40 * ZoomFactor);
             MonthScroll.UpdateLayout();
             _adjustingScroll = false;
         }
         SetCalendarOffset(offset);
         UpdateVisibleMonth();
-        e.Handled = true;
     }
     private void MonthScroll_Changed(object sender, ScrollChangedEventArgs e)
     {
@@ -69,7 +121,7 @@ public partial class CalendarPanel : UserControl
             || (e.VerticalChange < 0 && offset <= 1))
         {
             _adjustingScroll = true;
-            offset += vm.ExtendCalendar(e.VerticalChange < 0, CalendarRowHeight);
+            offset += vm.ExtendCalendar(e.VerticalChange < 0, CalendarRowHeight, 40 * ZoomFactor);
             MonthScroll.UpdateLayout();
             SetCalendarOffset(offset);
         }
@@ -81,7 +133,7 @@ public partial class CalendarPanel : UserControl
         var offset = MonthScroll.VerticalOffset;
         foreach (var month in vm.Months)
         {
-            var height = month.RowCount * CalendarRowHeight + 40;
+            var height = month.RowCount * CalendarRowHeight + 40 * ZoomFactor;
             if (offset < height) { vm.UpdateVisibleMonth(month.Month); return; }
             offset -= height;
         }

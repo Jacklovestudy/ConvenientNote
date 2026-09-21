@@ -9,6 +9,16 @@ public interface ICalendarRepository
     Task DeleteAsync(Guid workspaceId, Guid id, CancellationToken cancellationToken = default);
 }
 
+public sealed record CalendarImportBatch(Guid Id, string Name, string Fingerprint, string SourceText,
+    string Overview, DateTime ImportedAt, int ItemCount);
+
+public interface ICalendarBatchRepository
+{
+    Task ImportAsync(Guid workspaceId, CalendarImportBatch batch, IReadOnlyList<CalendarEvent> items, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<CalendarImportBatch>> ListBatchesAsync(Guid workspaceId, CancellationToken cancellationToken = default);
+    Task UndoImportAsync(Guid workspaceId, Guid batchId, CancellationToken cancellationToken = default);
+}
+
 public sealed record ExternalTodo(Guid Id, string Title, bool IsCompleted, DateTime? PlannedDate);
 
 /// <summary>Optional integration port. The calendar domain never depends on a todo model.</summary>

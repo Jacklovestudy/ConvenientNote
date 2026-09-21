@@ -1,7 +1,8 @@
 namespace ConvenientNote.Calendar.Contracts;
 
 public sealed record CalendarEntry(Guid Id, string Title, DateTime? PlannedDate, bool IsCompleted,
-    bool IsTodo, DateTime? End = null, bool IsAllDay = true)
+    bool IsTodo, DateTime? End = null, bool IsAllDay = true, string Details = "",
+    Guid? BatchId = null, string BatchName = "", bool IsChecklist = false)
 {
     public bool OccursOn(DateTime date) => PlannedDate is { } start &&
         (IsTodo ? start.Date == date.Date : start < date.Date.AddDays(1) && End > date.Date);

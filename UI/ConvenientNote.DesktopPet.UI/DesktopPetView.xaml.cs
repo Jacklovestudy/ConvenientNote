@@ -26,6 +26,11 @@ public partial class DesktopPetView : UserControl
             var now = _clock.Elapsed.TotalSeconds;
             var dt = Math.Clamp(now - _last, 0, .1); _last = now;
             _motion.RidingSpeed = _controller.RidingSpeed;
+            _motion.ChangeVehicle(_controller.Vehicle);
+            Preview.Vehicle = _motion.Vehicle;
+            var vehicleTarget = _motion.Vehicle == PetVehicle.Rocket ? 1d : 0d;
+            var blend = Preview.RocketBlend ?? vehicleTarget;
+            Preview.RocketBlend = Math.Abs(vehicleTarget - blend) < .005 ? vehicleTarget : blend + (vehicleTarget - blend) * Math.Min(1, dt * 7);
             _motion.Advance(dt);
             _phase += dt * (_motion.Speed > 0 ? _motion.Speed / 10 : .8);
             Preview.Update(_motion.Action, _phase, _motion.Age, _motion.Direction);

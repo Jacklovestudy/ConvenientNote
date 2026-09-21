@@ -76,6 +76,8 @@ public partial class RichNoteEditorControl : UserControl
             return;
         }
         _isLoading = true;
+        SearchBar.Visibility = Visibility.Collapsed;
+        DocumentSearchBox.Clear();
         _saveTimer.Stop();
         Editor.Document = _viewModel.DocumentService.Load(note.RichContent, note.Content);
         RestoreSavedFolds();
@@ -262,7 +264,7 @@ public partial class RichNoteEditorControl : UserControl
     private async void RichNoteEditorControl_PreviewKeyDown(object sender, KeyEventArgs e)
     {
         var insideCode = FindCodeBlockView(e.OriginalSource as DependencyObject) is not null;
-        if ((!insideCode || e.Key == Key.F || e.Key == Key.F3) && HandleOutlineKey(e)) { e.Handled = true; return; }
+        if ((!insideCode || e.Key == Key.F || e.Key == Key.F3 || (e.Key == Key.Escape && SearchBar.Visibility == Visibility.Visible)) && HandleOutlineKey(e)) { e.Handled = true; return; }
         if (e.Key != Key.S || Keyboard.Modifiers != ModifierKeys.Control)
         {
             return;

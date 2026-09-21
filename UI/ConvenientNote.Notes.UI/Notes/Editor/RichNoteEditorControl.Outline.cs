@@ -471,10 +471,10 @@ public partial class RichNoteEditorControl
         var modifiers = Keyboard.Modifiers;
         if (modifiers == ModifierKeys.Control && key == Key.F)
         {
-            SidebarTabs.SelectedIndex = 0;
-            DocumentSearchBox.Focus(); DocumentSearchBox.SelectAll(); return true;
+            OpenSearch(); return true;
         }
-        if (key == Key.F3) { FindInDocument(DocumentSearchBox.Text); return true; }
+        if (key == Key.Escape && SearchBar.Visibility == Visibility.Visible) { CloseSearch(); return true; }
+        if (key == Key.F3) { if (SearchBar.Visibility != Visibility.Visible) OpenSearch(); else FindInDocument(DocumentSearchBox.Text, modifiers.HasFlag(ModifierKeys.Shift) ? -1 : 1); return true; }
         if (modifiers != (ModifierKeys.Control | ModifierKeys.Alt)) return false;
         if (key >= Key.D0 && key <= Key.D3) { SetCurrentHeading(key - Key.D0); return true; }
         if (key is Key.Left or Key.Right)
@@ -491,10 +491,10 @@ public partial class RichNoteEditorControl
     private void FindNextButton_Click(object sender, RoutedEventArgs e) => FindInDocument(DocumentSearchBox.Text);
     private void DocumentSearchBox_KeyDown(object sender, KeyEventArgs e)
     {
-        if (e.Key == Key.Enter) { FindInDocument(DocumentSearchBox.Text); e.Handled = true; }
+        if (e.Key == Key.Enter) { FindInDocument(DocumentSearchBox.Text, Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) ? -1 : 1); e.Handled = true; }
     }
 
-    internal bool FindInDocument(string query) => FindTextOrCode(query);
+    internal bool FindInDocument(string query, int direction = 1) => FindTextOrCode(query, direction);
 
     private static IEnumerable<Paragraph> LogicalParagraphs(BlockCollection blocks)
     {

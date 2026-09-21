@@ -40,6 +40,8 @@ public partial class NotesView : UserControl, ConvenientNote.UI.Common.IPageLife
 
     public Task<bool> ReturnToWallAsync() => EditorControl.ReturnToWallAsync();
 
+    private void AutoArrangeNotesButton_Click(object sender, RoutedEventArgs e) => NoteWall.AutoArrange();
+
     internal bool TransferInProgress => _transferGate.IsInProgress;
 
     internal bool IsNotesMutationSealed => _mutationGate.IsPreparing;

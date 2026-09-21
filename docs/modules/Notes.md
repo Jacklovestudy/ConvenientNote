@@ -13,3 +13,5 @@ The Host supplies `IWorkspaceContext`, `INotesRepository`, `INoteMediaService`, 
 `SqliteNotesRepository.ImportLegacyAsync(workspaceId, notes)` inserts missing IDs only. Retrying migration never overwrites an already imported record. Original legacy storage remains the Host migration adapter's concern. Normal save and delete operations affect explicit note IDs only; no whole-workspace replacement is performed.
 
 The `testing` board marker and archive fields remain at compatibility/presentation boundaries to read existing backups. Active knowledge-memo notes retain the `__app_knowledge_memo` sentinel and are hidden from normal note lists.
+
+The note wall wraps filtered cards to its available width and scrolls vertically. Initial display, viewport resizing (including the knowledge-panel splitter), collection changes, and the “自动调整” button trigger arrangement. Display coordinates and constrained widths are separate from saved note geometry; automatic arrangement never persists position changes. Manual dragging still saves the dropped position, and scrollbar visibility changes caused by dragging do not repack the wall.

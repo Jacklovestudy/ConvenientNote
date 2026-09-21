@@ -31,11 +31,15 @@
     <Border.Style><Style TargetType="Border"><Setter Property="Padding" Value="0,9"/><Style.Triggers><DataTrigger Binding="{Binding IsCompact, RelativeSource={RelativeSource AncestorType={x:Type local:CalendarPanel}}}" Value="True"><Setter Property="Padding" Value="0,4"/></DataTrigger></Style.Triggers></Style></Border.Style>
     <StackPanel>
      <DockPanel Margin="24,0,0,5" Style="{StaticResource FullOnly}">
+      <Button DockPanel.Dock="Right" Content="详情 / 编辑" Style="{StaticResource Action}" Padding="6,2" Margin="6,0,0,0"
+       Visibility="{Binding IsEvent, Converter={StaticResource BoolVisibility}}" Click="EditEventClicked"/>
       <Button DockPanel.Dock="Right" Content="删除日程" Style="{StaticResource Action}" Padding="6,2"
        Visibility="{Binding IsEvent, Converter={StaticResource BoolVisibility}}"
        Command="{Binding DataContext.DeleteEventCommand, RelativeSource={RelativeSource AncestorType={x:Type local:CalendarPanel}}}" CommandParameter="{Binding}"/>
-      <TextBlock Text="{Binding SourceLabel}" Foreground="#596681" FontSize="11" VerticalAlignment="Center"/>
      </DockPanel>
+     <TextBlock Text="{Binding SourceLabel}" Foreground="#596681" FontSize="11" Margin="24,0,0,5" TextWrapping="Wrap" Style="{StaticResource FullOnly}"/>
+     <Button HorizontalAlignment="Left" HorizontalContentAlignment="Stretch" Margin="24,3,0,5" Style="{StaticResource Action}" Padding="6,2"
+      Visibility="{Binding HasBatch, Converter={StaticResource BoolVisibility}}" Click="BatchClicked" ToolTip="查看这份行程的总说明和原文"><TextBlock Text="{Binding BatchName}" TextWrapping="Wrap" MaxWidth="205"/></Button>
      <DockPanel>
       <CheckBox DockPanel.Dock="Left" Margin="0,1,9,0" VerticalAlignment="Top" IsChecked="{Binding IsCompleted, Mode=OneWay}" ToolTip="{Binding CompletionText}"
        Checked="CompletionChanged" Unchecked="CompletionChanged"/>
@@ -59,6 +63,8 @@
    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
    <DockPanel>
     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+     <Button Content="导入行程" Style="{StaticResource Action}" Click="ImportClicked" Margin="0,0,6,0"/>
+     <Button Content="导入记录" Style="{StaticResource Action}" Click="HistoryClicked" Margin="0,0,6,0"/>
      <Button Content="刷新" Style="{StaticResource Action}" Command="{Binding RefreshCommand}" Margin="0,0,6,0"/>
      <Button Content="桌面模式" Command="{Binding DesktopModeCommand}">
       <Button.Style><Style TargetType="Button" BasedOn="{StaticResource Action}"><Style.Triggers><DataTrigger Binding="{Binding IsCompact, ElementName=Root}" Value="True"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers></Style></Button.Style>
@@ -68,6 +74,7 @@
    </DockPanel>
    <DockPanel Grid.Row="1" Margin="0,10,0,0">
     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+     <Button x:Name="ResetZoomButton" Content="100%" Style="{StaticResource Action}" Click="ResetZoomClicked" Margin="0,0,8,0" ToolTip="Ctrl＋滚轮缩放日历；点击恢复100%" AutomationProperties.Name="恢复日历缩放到100%"/>
      <Button Content="‹" AutomationProperties.Name="上个月" Style="{StaticResource Action}" Command="{Binding PreviousMonthCommand}" FontSize="18" Padding="12,1"/>
      <Button Content="今天" Style="{StaticResource Action}" Command="{Binding TodayCommand}" Margin="5,0"/>
      <Button Content="›" AutomationProperties.Name="下个月" Style="{StaticResource Action}" Command="{Binding NextMonthCommand}" FontSize="18" Padding="12,1"/>
@@ -96,6 +103,7 @@
                   HorizontalScrollBarVisibility="Disabled" CanContentScroll="False"
                   PanningMode="VerticalOnly" PreviewMouseWheel="MonthScroll_MouseWheel" ScrollChanged="MonthScroll_Changed">
     <ItemsControl x:Name="MonthDays" ItemsSource="{Binding Months}">
+     <ItemsControl.LayoutTransform><ScaleTransform x:Name="CalendarScale" ScaleX="1" ScaleY="1"/></ItemsControl.LayoutTransform>
      <ItemsControl.ItemTemplate><DataTemplate>
       <StackPanel Margin="0,0,0,16">
        <TextBlock Text="{Binding Title}" Height="24" FontSize="14" FontWeight="SemiBold" Foreground="#3548A0" />
@@ -113,6 +121,7 @@
         <Style.Triggers>
          <DataTrigger Binding="{Binding}" Value="{x:Null}"><Setter Property="Visibility" Value="Hidden"/></DataTrigger>
          <DataTrigger Binding="{Binding IsCurrentMonth}" Value="False"><Setter Property="Background" Value="#F1F3F8"/><Setter Property="Foreground" Value="#757D90"/></DataTrigger>
+         <DataTrigger Binding="{Binding HasTasks}" Value="True"><Setter Property="BorderBrush" Value="#7887C4"/><Setter Property="BorderThickness" Value="2"/></DataTrigger>
          <DataTrigger Binding="{Binding IsSelected}" Value="True"><Setter Property="Background" Value="#E8EDFF"/><Setter Property="BorderBrush" Value="#3F51B5"/><Setter Property="BorderThickness" Value="2"/></DataTrigger>
         </Style.Triggers>
        </Style></Button.Style>
@@ -134,6 +143,7 @@
         <StackPanel Grid.Row="2" Margin="0,4,0,0">
          <StackPanel.Style><Style TargetType="StackPanel"><Style.Triggers><DataTrigger Binding="{Binding IsCompact, RelativeSource={RelativeSource AncestorType={x:Type local:CalendarPanel}}}" Value="True"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers></Style></StackPanel.Style>
          <ItemsControl ItemsSource="{Binding Previews}"><ItemsControl.ItemTemplate><DataTemplate><TextBlock Text="{Binding Title}" FontSize="11" TextTrimming="CharacterEllipsis" Foreground="#3548A0" Margin="0,0,0,3"/></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+         <TextBlock Text="{Binding AccommodationLabel}" ToolTip="{Binding AccommodationDetails}" FontSize="11" Foreground="#23645B" TextTrimming="CharacterEllipsis" Margin="0,0,0,3" Visibility="{Binding HasAccommodation, Converter={StaticResource BoolVisibility}}"/>
          <TextBlock Text="{Binding OverflowLabel}" FontSize="10" Foreground="#606A82"/>
         </StackPanel>
         <TextBlock Grid.Row="0" Text="{Binding Dots}" Foreground="#3F51B5" FontSize="5" HorizontalAlignment="Left" VerticalAlignment="Bottom">
@@ -154,6 +164,9 @@
      <StackPanel>
       <DockPanel><TextBlock Text="{Binding SelectedLunarLabel}" DockPanel.Dock="Right" Foreground="#596681" FontSize="12" VerticalAlignment="Center"/><TextBlock x:Name="SelectedTitle" ToolTip="{Binding SelectedSummary}" Text="{Binding SelectedDateTitle}" FontSize="17" FontWeight="SemiBold"/></DockPanel>
       <TextBlock x:Name="SelectedSummary" Text="{Binding SelectedSummary}" Foreground="#606A82" FontSize="12" Margin="0,6,0,12" TextWrapping="Wrap"/>
+      <Border Background="#F0F7F5" Padding="10" Margin="0,0,0,12" CornerRadius="5" Visibility="{Binding HasSelectedAccommodation, Converter={StaticResource BoolVisibility}}">
+       <StackPanel><TextBlock Text="当晚住宿" Foreground="#23645B" FontWeight="SemiBold" Margin="0,0,0,5"/><TextBlock Text="{Binding SelectedAccommodation}" Foreground="#202638" TextWrapping="Wrap" FontSize="12"/></StackPanel>
+      </Border>
       <StackPanel Style="{StaticResource FullOnly}">
       <TextBox Text="{Binding NewEventTitle, UpdateSourceTrigger=PropertyChanged}" materialDesign:HintAssist.Hint="日程标题" AutomationProperties.Name="日程标题" MinHeight="32" Padding="6,3"/>
       <DockPanel Margin="0,8,0,0">
@@ -175,13 +188,19 @@
        </TextBox>
       </DockPanel>
       <ItemsControl x:Name="SelectedTaskItems" ItemsSource="{Binding SelectedTasks}" ItemTemplate="{StaticResource TaskTemplate}" Margin="0,6,0,0" PreviewMouseLeftButtonDown="TaskMouseDown" PreviewMouseMove="TaskMouseMove"/>
-      <Expander Header="{Binding UnscheduledTitle}" Margin="0,15,0,0" Foreground="#596681" Visibility="{Binding SupportsTodos, Converter={StaticResource BoolVisibility}}">
+      <Expander Header="{Binding UnscheduledTitle}" Margin="0,15,0,0" Foreground="#596681">
        <ItemsControl ItemsSource="{Binding UnscheduledTasks}"><ItemsControl.ItemTemplate><DataTemplate>
-        <DockPanel Margin="0,8,0,0">
+        <StackPanel Margin="0,8,0,4">
+         <DockPanel>
+          <CheckBox DockPanel.Dock="Left" Margin="0,1,9,0" VerticalAlignment="Top" IsChecked="{Binding IsCompleted, Mode=OneWay}" ToolTip="{Binding CompletionText}" Checked="CompletionChanged" Unchecked="CompletionChanged"/>
+          <TextBlock Text="{Binding Title}" TextWrapping="Wrap" VerticalAlignment="Center" FontSize="12"/>
+         </DockPanel>
+         <StackPanel Orientation="Horizontal" Margin="24,5,0,0">
          <Button DockPanel.Dock="Right" Content="安排到这天" Style="{StaticResource Action}" Padding="6,3" Margin="8,0,0,0"
           Command="{Binding DataContext.ScheduleUnassignedCommand, RelativeSource={RelativeSource AncestorType={x:Type local:CalendarPanel}}}" CommandParameter="{Binding}"/>
-         <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" FontSize="12"/>
-        </DockPanel>
+          <Button Content="详情 / 编辑" Style="{StaticResource Action}" Padding="6,3" Margin="6,0,0,0" Visibility="{Binding IsEvent, Converter={StaticResource BoolVisibility}}" Click="EditEventClicked"/>
+         </StackPanel>
+        </StackPanel>
        </DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
       </Expander>
      </StackPanel>

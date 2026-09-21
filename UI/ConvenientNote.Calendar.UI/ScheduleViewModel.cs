@@ -14,14 +14,22 @@ namespace ConvenientNote.ViewModels;
 public sealed class CalendarTaskViewModel : BindableBase
 {
     private DateTime? _editDate;
-    public CalendarTaskViewModel(CalendarEntry note) { Note = note; _editDate = note.PlannedDate; }
+    public CalendarTaskViewModel(CalendarEntry note)
+    {
+        Note = note; _editDate = note.PlannedDate;
+        Accommodation = !note.IsTodo && !note.IsChecklist && note.IsAllDay ? AccommodationParser.Parse(note.Details) : null;
+    }
     public CalendarEntry Note { get; }
     public Guid Id => Note.Id;
     public string Title => Note.Title;
     public bool IsCompleted => Note.IsCompleted;
     public bool IsEvent => !Note.IsTodo;
-    public string SourceLabel => Note.IsTodo ? "待办" : Note.IsAllDay ? "日程 · 全天" : $"日程 · {Note.PlannedDate:HH:mm}–{Note.End:HH:mm}";
-    public string RescheduleHint => Note.IsTodo ? "保存新日期；清空日期可移回待安排" : "保存新日期，保留日程时长；日程日期不能为空";
+    public string SourceLabel => Note.IsTodo ? "待办" : Note.IsChecklist ? "行程核对事项" : Note.IsAllDay ? "日程 · 全天" : $"日程 · {Note.PlannedDate:MM-dd HH:mm}–{Note.End:MM-dd HH:mm}";
+    public string Details => Note.Details;
+    public AccommodationInfo? Accommodation { get; }
+    public string BatchName => Note.BatchName;
+    public bool HasBatch => Note.BatchId is not null;
+    public string RescheduleHint => Note.IsTodo || Note.IsChecklist ? "保存新日期；清空日期可移回待安排" : "保存新日期，保留日程时长；日程日期不能为空";
     public DateTime? EditDate { get => _editDate; set => SetProperty(ref _editDate, value); }
     public string CompletionText => IsCompleted ? "标为未完成" : "标为完成";
 }
@@ -40,8 +48,12 @@ public sealed class CalendarDayViewModel(DateTime date, bool isCurrentMonth, boo
     public string WorkRestLabel => CalendarDateInfo.WorkRestLabel(Date);
     public bool IsWeekend => Date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday;
     public bool HasTasks => Tasks.Count > 0;
-    public IReadOnlyList<CalendarTaskViewModel> Previews => Tasks.Take(2).ToArray();
-    public string OverflowLabel => Tasks.Count > 2 ? $"+{Tasks.Count - 2} 项" : "";
+    public IReadOnlyList<AccommodationInfo> Accommodations { get; } = tasks.Select(t => t.Accommodation).OfType<AccommodationInfo>().Distinct().ToArray();
+    public bool HasAccommodation => Accommodations.Count > 0;
+    public string AccommodationLabel => HasAccommodation ? "住 · " + string.Join(" / ", Accommodations.Select(h => h.Label)) : "";
+    public string AccommodationDetails => string.Join("\n\n", Accommodations.Select(h => h.Description));
+    public IReadOnlyList<CalendarTaskViewModel> Previews => Tasks.Take(HasAccommodation ? 1 : 2).ToArray();
+    public string OverflowLabel => Tasks.Count > Previews.Count ? $"+{Tasks.Count - Previews.Count} 项" : "";
     public string Dots => Tasks.Count == 0 ? "" : new string('●', Math.Min(Tasks.Count, 3));
     public string AccessibleLabel => $"{Date:yyyy年M月d日}，{LunarLabel}，{Tasks.Count} 项待办";
 }
@@ -65,6 +77,7 @@ public sealed class CalendarMonthViewModel
 public sealed class ScheduleViewModel : BindableBase, INavigationAware, IDisposable
 {
     private readonly CalendarApplicationService _service;
+    internal CalendarApplicationService CalendarService => _service;
     private readonly SemaphoreSlim _refreshGate = new(1, 1);
 
     private IReadOnlyList<CalendarEntry> _notes = [];
@@ -119,6 +132,8 @@ public sealed class ScheduleViewModel : BindableBase, INavigationAware, IDisposa
     public string SelectedDateTitle => SelectedDate.ToString("M月d日 · dddd", CultureInfo.GetCultureInfo("zh-CN"));
     public string SelectedLunarLabel => CalendarDateInfo.Label(SelectedDate);
     public string SelectedSummary => SelectedTasks.Count == 0 ? "这天还没有安排，写下第一件事吧。" : $"{SelectedTasks.Count} 项安排 · {SelectedTasks.Count(t => t.IsCompleted)} 项已完成";
+    public string SelectedAccommodation => string.Join("\n\n", SelectedTasks.Select(t => t.Accommodation).OfType<AccommodationInfo>().Distinct().Select(h => h.Description));
+    public bool HasSelectedAccommodation => SelectedAccommodation.Length > 0;
     public string HolidayNotice => DisplayMonth.Year == 2026 ? "休 / 班 · 2026 国务院办公厅节假日安排" : "本年度节假日调休安排暂无数据";
     public string UnscheduledTitle => $"待安排 · {UnscheduledTasks.Count}";
     public DateTime SelectedDate { get => _selectedDate; set => SelectDate(value); }
@@ -162,6 +177,11 @@ public sealed class ScheduleViewModel : BindableBase, INavigationAware, IDisposa
             foreach (var day in Days) day.IsSelected = day.Date == date;
             UpdateSelectedTasks();
         }
+    }
+    public void NavigateToDate(DateTime date)
+    {
+        SelectDate(date);
+        ResetCalendarRange();
     }
     private void ShiftMonth(int delta) { var next = DisplayMonth.AddMonths(delta); DisplayMonth = next; }
     public async Task RefreshAsync()
@@ -243,7 +263,7 @@ public sealed class ScheduleViewModel : BindableBase, INavigationAware, IDisposa
 
     // Retain complete month blocks and existing date objects while extending.
     // Return the pixel adjustment for content added/removed above the viewport.
-    public double ExtendCalendar(bool earlier, double rowHeight = 100)
+    public double ExtendCalendar(bool earlier, double rowHeight = 100, double monthSpacing = 40)
     {
         if (Months.Count == 0) return 0;
         var month = (earlier ? Months[0].Month : Months[^1].Month).AddMonths(earlier ? -1 : 1);
@@ -255,7 +275,7 @@ public sealed class ScheduleViewModel : BindableBase, INavigationAware, IDisposa
         {
             for (var i = days.Length - 1; i >= 0; i--) Days.Insert(0, days[i]);
             Months.Insert(0, block);
-            shift = block.RowCount * rowHeight + 40;
+            shift = block.RowCount * rowHeight + monthSpacing;
         }
         else
         {
@@ -267,7 +287,7 @@ public sealed class ScheduleViewModel : BindableBase, INavigationAware, IDisposa
             var removed = earlier ? Months[^1] : Months[0];
             Months.Remove(removed);
             foreach (var day in removed.Cells.OfType<CalendarDayViewModel>()) Days.Remove(day);
-            if (!earlier) shift -= removed.RowCount * rowHeight + 40;
+            if (!earlier) shift -= removed.RowCount * rowHeight + monthSpacing;
         }
         return shift;
     }
@@ -285,7 +305,7 @@ public sealed class ScheduleViewModel : BindableBase, INavigationAware, IDisposa
     {
         SelectedTasks.Clear();
         foreach (var task in _tasks.Where(t => t.Note.OccursOn(SelectedDate))) SelectedTasks.Add(task);
-        foreach (var name in new[] { nameof(SelectedDateTitle), nameof(SelectedLunarLabel), nameof(SelectedSummary) }) RaisePropertyChanged(name);
+        foreach (var name in new[] { nameof(SelectedDateTitle), nameof(SelectedLunarLabel), nameof(SelectedSummary), nameof(SelectedAccommodation), nameof(HasSelectedAccommodation) }) RaisePropertyChanged(name);
     }
     public void OnNavigatedTo(NavigationContext navigationContext) => _ = RefreshAsync();
     public bool IsNavigationTarget(NavigationContext navigationContext) => true;

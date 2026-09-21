@@ -1,0 +1,40 @@
+<Window x:Class="ConvenientNote.Views.ItineraryImportWindow"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes" xmlns:local="clr-namespace:ConvenientNote.Views" Title="导入行程" Width="1060" Height="740" MinWidth="780" MinHeight="560"
+ WindowStartupLocation="CenterOwner" Background="#F4F6FB" Foreground="#202638" FontFamily="Microsoft YaHei UI" Loaded="WindowLoaded">
+ <Window.Resources>
+  <Style TargetType="Button"><Setter Property="Padding" Value="14,7"/><Setter Property="Margin" Value="0,0,8,0"/><Setter Property="MinHeight" Value="34"/></Style>
+ </Window.Resources>
+ <Grid Margin="22" Background="#F4F6FB"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+  <StackPanel Margin="0,0,0,16"><TextBlock Text="把旅行计划放进日历" FontSize="22" FontWeight="SemiBold"/><TextBlock Text="粘贴原文，检查日期与内容，确认后一次导入。全程在本机处理。" Foreground="#596681" Margin="0,6,0,0"/></StackPanel>
+  <TabControl x:Name="Tabs" Grid.Row="1">
+   <TabItem Header="1 · 粘贴行程"><Grid Margin="14"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+    <DockPanel Margin="0,0,0,10"><StackPanel DockPanel.Dock="Right" Orientation="Horizontal"><TextBlock Text="原文未写年份时使用：" VerticalAlignment="Center"/><TextBox x:Name="YearInput" Width="65" Padding="5" AutomationProperties.Name="默认年份"/></StackPanel><TextBlock Text="支持【9月24日 周四｜下班后出发】这样的每日标题。" TextWrapping="Wrap" VerticalAlignment="Center"/></DockPanel>
+    <TextBox x:Name="SourceInput" Grid.Row="1" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" Padding="12" AutomationProperties.Name="行程原文"/>
+    <DockPanel Grid.Row="2" Margin="0,12,0,0"><Button x:Name="ParseButton" DockPanel.Dock="Right" Content="解析并预览 →" Click="ParseClicked"/><TextBlock Text="只有明确起止时间才生成定时日程；模糊安排保留在详情中。" TextWrapping="Wrap" VerticalAlignment="Center" Foreground="#596681"/></DockPanel>
+   </Grid></TabItem>
+   <TabItem x:Name="PreviewTab" Header="2 · 检查预览" IsEnabled="False"><Grid Margin="14"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+    <DockPanel><TextBlock Text="行程名称" VerticalAlignment="Center" Margin="0,0,10,0"/><TextBox x:Name="NameInput" Padding="6" MaxLength="200" AutomationProperties.Name="行程名称"/></DockPanel>
+    <TextBlock Grid.Row="1" Text="勾选需要导入的项目，选中一行可编辑详情。未指定日期的核对事项放在待安排，可按需指定日期。" Margin="0,10" TextWrapping="Wrap" Foreground="#596681"/>
+    <Grid Grid.Row="2"><Grid.ColumnDefinitions><ColumnDefinition Width="1.1*"/><ColumnDefinition Width="16"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+     <DataGrid x:Name="DraftGrid" AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False" SelectionMode="Single" SelectionUnit="FullRow" HeadersVisibility="Column" GridLinesVisibility="Horizontal" RowHeaderWidth="0" SelectionChanged="DraftSelected" EnableRowVirtualization="True" MinRowHeight="36" materialDesign:DataGridAssist.ColumnHeaderPadding="8,10" Background="White" BorderBrush="#D5DAE8" HorizontalGridLinesBrush="#E5E8F0">
+      <DataGrid.Columns><DataGridCheckBoxColumn Header="导入" Binding="{Binding Included, UpdateSourceTrigger=PropertyChanged}" Width="48"/><DataGridTextColumn Header="日期" Binding="{Binding DateLabel}" IsReadOnly="True" Width="66"/><DataGridTextColumn Header="类型" Binding="{Binding Kind}" IsReadOnly="True" Width="78"/><DataGridTextColumn Header="标题" Binding="{Binding Title}" IsReadOnly="True" Width="*" MinWidth="140"/></DataGrid.Columns>
+     </DataGrid>
+     <local:ItineraryDraftEditor x:Name="DraftEditor" Grid.Column="2"/>
+    </Grid>
+    <DockPanel Grid.Row="3" Margin="0,12,0,0"><Button DockPanel.Dock="Right" Content="确认导入" Click="ImportClicked"/><TextBlock x:Name="CountLabel" VerticalAlignment="Center" TextWrapping="Wrap"/></DockPanel>
+   </Grid></TabItem>
+   <TabItem x:Name="HistoryTab" Header="导入记录 / 总说明"><Grid Margin="14"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+    <TextBlock Text="选择一份行程查看总说明和原文。撤销会删除本批次当前剩余的所有项目，包括已修改的项目。" TextWrapping="Wrap" Foreground="#596681" Margin="0,0,0,10"/>
+    <Grid Grid.Row="1"><Grid.ColumnDefinitions><ColumnDefinition Width="240"/><ColumnDefinition Width="14"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+     <ListBox x:Name="BatchList" SelectionChanged="BatchSelected"><ListBox.ItemTemplate><DataTemplate><StackPanel Margin="6,8"><TextBlock Text="{Binding Name}" TextWrapping="Wrap" FontWeight="SemiBold"/><TextBlock Text="{Binding ItemCount, StringFormat=原导入 {0} 项}" Foreground="#596681" Margin="0,5,0,0"/></StackPanel></DataTemplate></ListBox.ItemTemplate></ListBox>
+     <TabControl Grid.Column="2"><TabItem Header="全程总说明"><TextBox x:Name="OverviewText" IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" Padding="10"/></TabItem><TabItem Header="完整原文"><TextBox x:Name="OriginalText" IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" Padding="10"/></TabItem></TabControl>
+    </Grid>
+    <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0"><Button Content="定位到行程" Click="LocateClicked"/><Button Content="撤销所选批次…" Click="UndoClicked"/></StackPanel>
+   </Grid></TabItem>
+  </TabControl>
+  <TextBlock x:Name="Status" Grid.Row="2" TextWrapping="Wrap" Margin="0,12,0,0" Foreground="#AB263E" AutomationProperties.LiveSetting="Polite"/>
+ </Grid>
+</Window>
+
+

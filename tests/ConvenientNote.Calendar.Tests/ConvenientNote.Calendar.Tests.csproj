@@ -12,6 +12,7 @@
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="../../UI/ConvenientNote.Calendar.UI/ConvenientNote.Calendar.UI.csproj" />
     <ProjectReference Include="../../src/Infrastructure/ConvenientNote.Calendar.Infrastructure/ConvenientNote.Calendar.Infrastructure.csproj" />
   </ItemGroup>
 </Project>

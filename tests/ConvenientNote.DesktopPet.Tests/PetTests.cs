@@ -8,6 +8,22 @@ namespace ConvenientNote.DesktopPet.Tests;
 public sealed class PetTests
 {
     [Fact]
+    public void SleepEndsAfterThirtySecondsAndResetsIdleTime()
+    {
+        var pet = new PetMotion();
+        pet.Advance(90);
+        Assert.Equal(PetAction.Sleep, pet.Action);
+        pet.Advance(29.9);
+        Assert.Equal(PetAction.Sleep, pet.Action);
+        pet.Advance(.2);
+        Assert.Equal(PetAction.Ride, pet.Action);
+        pet.Advance(1);
+        Assert.Equal(PetAction.Ride, pet.Action);
+        pet.Sleep(); pet.Advance(30);
+        Assert.Equal(PetAction.Ride, pet.Action);
+    }
+
+    [Fact]
     public void BoostTracksConfiguredSpeedAndBrakingStartsAtBoostSpeed()
     {
         var pet = new PetMotion();
@@ -30,8 +46,10 @@ public sealed class PetTests
             File.WriteAllText(path, "{\"Enabled\":false,\"Scale\":1,\"Roaming\":true}");
             var service = new PetPreferencesService(new JsonPetPreferencesStore(path));
             Assert.Equal(22, service.Current.RidingSpeed);
-            service.Update(service.Current with { RidingSpeed = 75 });
+            Assert.Equal(PetVehicle.Bicycle, service.Current.Vehicle);
+            service.Update(service.Current with { RidingSpeed = 75, Vehicle = PetVehicle.Rocket });
             Assert.Equal(75, new PetPreferencesService(new JsonPetPreferencesStore(path)).Current.RidingSpeed);
+            Assert.Equal(PetVehicle.Rocket, new PetPreferencesService(new JsonPetPreferencesStore(path)).Current.Vehicle);
             Assert.Throws<ArgumentOutOfRangeException>(() => (service.Current with { RidingSpeed = double.NaN }).Validate());
             Assert.Throws<ArgumentOutOfRangeException>(() => new PetMotion().RidingSpeed = 0);
         }

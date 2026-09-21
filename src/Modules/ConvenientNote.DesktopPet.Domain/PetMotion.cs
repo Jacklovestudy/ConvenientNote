@@ -16,6 +16,14 @@ public sealed class PetMotion
     public PetAction Action { get; private set; } = PetAction.Ride;
     public double Age { get; private set; }
     public int Direction { get; private set; } = 1;
+    public PetVehicle Vehicle { get; private set; }
+    public void ChangeVehicle(PetVehicle vehicle)
+    {
+        if (!Enum.IsDefined(vehicle)) throw new ArgumentOutOfRangeException(nameof(vehicle));
+        if (Vehicle == vehicle) return;
+        Vehicle = vehicle;
+        Interact(PetAction.Ride);
+    }
     public const double CollisionDuration = 3;
     public double Speed => Action switch
     {
@@ -34,7 +42,12 @@ public sealed class PetMotion
             if (Age >= CollisionDuration) { Direction *= -1; _idle = 0; Set(PetAction.Ride); }
             return;
         }
-        if (Action is PetAction.Drag or PetAction.Sleep) return;
+        if (Action == PetAction.Sleep)
+        {
+            if (Age >= 30) Ride();
+            return;
+        }
+        if (Action == PetAction.Drag) return;
         _idle += seconds;
         if (Action == PetAction.Boost && Age >= 2.5) Brake();
         else if (Action == PetAction.Brake && Age >= .5)
@@ -56,6 +69,7 @@ public sealed class PetMotion
     public void TurnAtEdge()
     {
         if (Action is not (PetAction.Ride or PetAction.Boost)) return;
+        if (Vehicle == PetVehicle.Rocket) { Brake(); _turn = true; return; }
         Interact(PetAction.Crash);
     }
     public void Brake() { _brakingSpeed = Speed; Set(PetAction.Brake); }

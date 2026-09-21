@@ -23,6 +23,9 @@ public sealed class PelicanVisual : FrameworkElement
     public double AttentionTilt { get; set; }
     public double FrontFacing { get; set; }
     public double BubbleOpacity { get; set; }
+    public PetVehicle Vehicle { get; set; }
+    public PetVehicle? PendingVehicle { get; set; }
+    public double? RocketBlend { get; set; }
     public double? RestAmount { get; set; }
     public Point? Pointer { get; set; }
     private Transform _headRotation = Transform.Identity;
@@ -73,18 +76,21 @@ public sealed class PelicanVisual : FrameworkElement
         dc.PushTransform(new ScaleTransform(scale, scale));
         if (Direction < 0) dc.PushTransform(new ScaleTransform(-1, 1, 180, 155));
         var riding = !IsAttentive && Action is (PetAction.Ride or PetAction.Boost or PetAction.Brake);
+        var rocket = Math.Clamp(RocketBlend ?? (Vehicle == PetVehicle.Rocket ? 1 : 0), 0, 1);
+        var floating = rocket * Math.Sin(Phase * 1.3) * 2;
         var pedal = riding ? Phase : 0;
-        var bob = riding ? Math.Sin(pedal * 2) * 1.2 : Action == PetAction.Sleep ? Math.Sin(Phase) * 1.4 : 0;
+        var bob = (riding ? Math.Sin(pedal * 2) * 1.2 * (1 - rocket) : Action == PetAction.Sleep ? Math.Sin(Phase) * 1.4 : 0) + floating;
         _bob = bob;
         var tilt = Action == PetAction.Drag ? Math.Sin(Phase * 1.8) * 4 : 0;
         dc.PushTransform(new RotateTransform(tilt, 180, 155));
         dc.PushTransform(new TranslateTransform(0, Action == PetAction.Drag ? -6 : 0));
 
-        var crashing = Action == PetAction.Crash;
+        var crashing = Action == PetAction.Crash && Vehicle == PetVehicle.Bicycle;
         var fall = crashing ? Ease((ActionAge - .25) / .65) : 0;
         var climb = crashing ? Ease((ActionAge - 1.8) / 1.1) : 0;
         var offBike = fall * (1 - climb);
         var impact = crashing ? Math.Sin(Math.Clamp(ActionAge / .4, 0, 1) * Math.PI) : 0;
+        dc.PushOpacity(1 - rocket);
         dc.PushTransform(new RotateTransform(crashing ? 4 * Math.Sin(ActionAge * 18) * Math.Exp(-ActionAge * 3) : 0, 282, 245));
 
         Wheel(dc, new Point(78, 245), pedal);
@@ -93,8 +99,10 @@ public sealed class PelicanVisual : FrameworkElement
         var crank = new Point(179, 235);
         var farFoot = new Point(crank.X - Math.Cos(pedal) * 19, crank.Y - Math.Sin(pedal) * 19);
         var nearFoot = new Point(crank.X + Math.Cos(pedal) * 19, crank.Y + Math.Sin(pedal) * 19);
+        farFoot += (new Point(112, 204 + floating) - farFoot) * rocket;
+        nearFoot += (new Point(185, 245 + floating) - nearFoot) * rocket;
         if (Action == PetAction.Drag) { farFoot = new(170 + Math.Sin(Phase * 2) * 7, 250); nearFoot = new(204 + Math.Sin(Phase * 2 + 1) * 7, 254); }
-        if (Action == PetAction.React) nearFoot = new(177, 292);
+        if (Action == PetAction.React) nearFoot = new(177 + rocket * 8, 292 - rocket * 47 + floating);
         if (!crashing) Leg(dc, new Point(155, 163 + bob), farFoot, Brush("#D99430"));
 
         // Bicycle chassis, fork, chain guard, saddle and handlebar.
@@ -119,6 +127,16 @@ public sealed class PelicanVisual : FrameworkElement
         Shape(dc, "M 272,147 Q 302,154 281,203", null, Pen(Green, 1.3));
         if (Action == PetAction.Sleep) Line(dc, new(203, 226), new(218, 296), Green, 4);
         dc.Pop(); // Bicycle movement is independent of the rider falling off.
+        dc.Pop(); // Bicycle opacity during the change of vehicle.
+        if (rocket > 0)
+        {
+            dc.PushOpacity(rocket);
+            Leg(dc, new Point(155, 163 + bob), farFoot, Brush("#D99430"));
+            dc.PushTransform(new TranslateTransform(0, floating));
+            var thrust = Action == PetAction.Boost ? 1 : Action == PetAction.Brake ? .6 * Math.Max(0, 1 - ActionAge / .5) : Action is PetAction.Sleep or PetAction.Drag || IsAttentive ? .12 : .6;
+            Rocket(dc, thrust);
+            dc.Pop(); dc.Pop();
+        }
         if (!crashing) Leg(dc, new Point(148, 167 + bob), nearFoot, Gold);
 
         dc.PushTransform(new TranslateTransform(18 * offBike - 4 * impact, 100 * offBike));
@@ -252,12 +270,46 @@ public sealed class PelicanVisual : FrameworkElement
             dc.Pop();
         }
         dc.DrawEllipse(Brush("#F3BB93"), null, new Point(211 + 15 * front, 60), 5, 3);
+        if (rocket > 0)
+        {
+            dc.PushOpacity(rocket);
+            var lens = Brush("#243B3D");
+            var rim = Pen(Ink, 2);
+            if (front > .5)
+            {
+                dc.DrawRoundedRectangle(lens, rim, new Rect(184, 36, 20, 15), 5, 5);
+                dc.DrawRoundedRectangle(lens, rim, new Rect(211, 36, 20, 15), 5, 5);
+                Line(dc, new(204, 40), new(211, 40), Ink, 2.5);
+                Line(dc, new(188, 39), new(195, 39), Brush("#8CABAA"), 1.8);
+                Line(dc, new(215, 39), new(222, 39), Brush("#8CABAA"), 1.8);
+            }
+            else
+            {
+                Line(dc, new(185, 37), new(205, 40), Ink, 3);
+                dc.DrawRoundedRectangle(lens, rim, new Rect(205, 35, 24, 17), 5, 5);
+                Line(dc, new(210, 39), new(218, 39), Brush("#8CABAA"), 2);
+            }
+            dc.Pop();
+        }
         dc.Pop();
         dc.Pop(); // Keep the hand on the handlebar while the torso leans.
 
         if (offBike > .3)
             Shape(dc, "M 108,132 C 128,115 147,130 165,144 Q 190,148 205,130 Q 219,123 219,137 Q 201,177 165,168 Q 132,161 117,146", Cream);
-        else Shape(dc, "M 108,132 C 128,115 147,130 165,144 C 182,157 219,144 260,141 Q 274,140 275,148 Q 274,155 260,157 C 218,164 181,179 150,165 Q 127,158 117,146", Cream);
+        else
+        {
+            dc.PushOpacity(1 - rocket);
+            Shape(dc, "M 108,132 C 128,115 147,130 165,144 C 182,157 219,144 260,141 Q 274,140 275,148 Q 274,155 260,157 C 218,164 181,179 150,165 Q 127,158 117,146", Cream);
+            dc.Pop();
+            if (rocket > 0)
+            {
+                dc.PushOpacity(rocket);
+                // The wing reaches down to grip the curved nose instead of a handlebar.
+                Shape(dc, "M 108,132 C 128,115 147,130 165,144 C 198,159 245,183 285,201 Q 301,201 303,210 Q 303,219 286,214 C 242,202 206,184 175,174 Q 141,174 117,146", Cream);
+                Shape(dc, "M 288,204 Q 296,206 296,213", null, Pen(Brush("#A6B5A0"), 1.7));
+                dc.Pop();
+            }
+        }
         Shape(dc, "M 117,136 Q 137,133 150,144 M 127,145 Q 141,148 150,154", null, Pen(Brush("#A6B5A0"), 1.7));
         dc.Pop();
         if (crashing && ActionAge is > .7 and < 1.8)
@@ -284,6 +336,13 @@ public sealed class PelicanVisual : FrameworkElement
         }
         dc.Pop(); dc.Pop();
         if (Direction < 0) dc.Pop();
+        if (PendingVehicle is { } pending && Action == PetAction.Drag)
+        {
+            var hint = new FormattedText(pending == PetVehicle.Rocket ? "松开乘火箭" : "松开骑单车", System.Globalization.CultureInfo.GetCultureInfo("zh-CN"),
+                FlowDirection.LeftToRight, new Typeface("Microsoft YaHei UI"), 19, Ink, VisualTreeHelper.GetDpi(this).PixelsPerDip);
+            dc.DrawRoundedRectangle(Brush("#FFFEF6"), Pen(Brush("#8FA99A"), 1.5), new Rect(7, 9, 145, 38), 12, 12);
+            dc.DrawText(hint, new Point(7 + (145 - hint.Width) / 2, 9 + (38 - hint.Height) / 2));
+        }
         // Draw text after undoing the character's mirror, so it reads normally both ways.
         if (BubbleOpacity > .01 && Action is not (PetAction.Crash or PetAction.Drag or PetAction.Boost))
         {
@@ -326,6 +385,32 @@ public sealed class PelicanVisual : FrameworkElement
         dc.DrawEllipse(Gold, null, reflector, 2.6, 3.6);
         dc.DrawEllipse(Green, Outline, center, 6, 6);
         // Open wheel centers remain transparent; the cream is only a narrow rim.
+    }
+
+    private void Rocket(DrawingContext dc, double thrust)
+    {
+        // A rounded cream rocket with the same green and rust-red palette as the bicycle.
+        var length = 18 + thrust * (36 + Math.Sin(Phase * 8) * 6);
+        var flame = new StreamGeometry();
+        using (var c = flame.Open())
+        {
+            c.BeginFigure(new Point(91, 214), true, true);
+            c.QuadraticBezierTo(new Point(65, 210), new Point(83 - length, 229), true, false);
+            c.QuadraticBezierTo(new Point(62, 248), new Point(91, 244), true, false);
+        }
+        dc.DrawGeometry(Orange, null, flame);
+        dc.DrawEllipse(Gold, null, new Point(76, 229), 10 + thrust * 8, 9);
+        Shape(dc, "M 117,205 Q 105,183 82,180 L 91,218 Z", Scarf);
+        Shape(dc, "M 115,248 Q 107,274 81,278 L 91,239 Z", Scarf);
+        Shape(dc, "M 87,207 C 157,184 259,182 308,212 Q 338,230 308,249 C 257,273 155,269 87,251 Z", Cream);
+        Shape(dc, "M 91,238 Q 210,264 311,240 Q 284,270 158,261 L 89,251 Z", Shade, null);
+        Shape(dc, "M 280,199 Q 317,206 329,230 Q 313,253 280,260 Q 298,229 280,199 Z", Scarf);
+        Line(dc, new(88, 209), new(88, 250), Green, 9);
+        dc.DrawEllipse(Green, Outline, new Point(246, 228), 19, 19);
+        dc.DrawEllipse(Brush("#ADDCD4"), Pen(Cream, 2), new Point(246, 228), 13, 13);
+        Shape(dc, "M 240,220 Q 246,215 251,220", null, Pen(Brush("#F5FFF9"), 2.5));
+        Shape(dc, "M 163,245 Q 178,262 164,278 Q 194,269 206,246 Z", Scarf);
+        Line(dc, new(137, 193), new(164, 193), Ink, 7);
     }
 
     private static double Ease(double value)
